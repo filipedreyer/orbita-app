@@ -5,10 +5,10 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignupPage } from '../features/auth/SignupPage';
+import { CentralPage } from '../features/central/CentralPage';
 import { useAuth } from '../features/auth/AuthProvider';
 import { FazerHomePage } from '../features/fazer/FazerHomePage';
 import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
-import { CentralPage } from '../features/planejar/CentralPage';
 import { PlanejarHomePage } from '../features/planejar/PlanejarHomePage';
 
 function ProtectedApp() {

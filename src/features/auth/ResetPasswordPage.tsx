@@ -4,9 +4,11 @@ import { routes } from '../../app/routes';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { updatePassword } from '../../services/auth';
+import { useAuth } from './AuthProvider';
 import { AuthShell } from './AuthShell';
 
 export function ResetPasswordPage() {
+  const { session, loading: authLoading } = useAuth();
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,11 +35,17 @@ export function ResetPasswordPage() {
       subtitle="Esta rota é a landing page do link enviado por email. O token continua sendo validado pelo Supabase."
       footer={<Link className="font-semibold text-[var(--teal)]" to={routes.login}>Ir para login</Link>}
     >
+      {authLoading ? <p className="text-sm text-[var(--text-secondary)]">Validando link de recuperação...</p> : null}
+      {!authLoading && !session ? (
+        <p className="text-sm text-[var(--red)]">
+          Nenhuma sessão de recuperação foi detectada. Abra novamente o link recebido por email.
+        </p>
+      ) : null}
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Input label="Nova senha" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Digite a nova senha" />
         {message ? <p className="text-sm text-[var(--green)]">{message}</p> : null}
         {error ? <p className="text-sm text-[var(--red)]">{error}</p> : null}
-        <Button className="w-full" loading={loading} type="submit">Atualizar senha</Button>
+        <Button className="w-full" disabled={!session || authLoading} loading={loading} type="submit">Atualizar senha</Button>
       </form>
     </AuthShell>
   );
