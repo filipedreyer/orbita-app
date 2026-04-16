@@ -12,25 +12,10 @@ import {
   isTodayInegociavel,
   isTodayTask,
 } from './canonical';
+import { sortDayItems } from './ordering';
 
-export function sortDayItems(items: Item[], referenceDate: string) {
-  const priorityRank: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
-
-  return [...items].sort((left, right) => {
-    const leftOverdue = isOverdueItem(left, referenceDate) ? 0 : 1;
-    const rightOverdue = isOverdueItem(right, referenceDate) ? 0 : 1;
-    if (leftOverdue !== rightOverdue) return leftOverdue - rightOverdue;
-
-    const leftPriority = priorityRank[left.priority ?? ''] ?? 3;
-    const rightPriority = priorityRank[right.priority ?? ''] ?? 3;
-    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
-
-    return (left.due_date ?? '9999-12-31').localeCompare(right.due_date ?? '9999-12-31');
-  });
-}
-
-export function deriveHojeDomain(items: Item[], referenceDate: string) {
-  const dayItems = sortDayItems(items.filter((item) => isItemOfDay(item, referenceDate)), referenceDate);
+export function deriveHojeDomain(items: Item[], referenceDate: string, ritualOrder: string[] = []) {
+  const dayItems = sortDayItems(items.filter((item) => isItemOfDay(item, referenceDate)), referenceDate, ritualOrder);
   const overdueItems = items.filter((item) => isOverdueItem(item, referenceDate));
   const todayTasks = items.filter((item) => isTodayTask(item, referenceDate));
   const todayHabits = items.filter((item) => isTodayHabitLike(item));
@@ -72,7 +57,7 @@ export function deriveHojeDomain(items: Item[], referenceDate: string) {
 }
 
 export function deriveRitualDomain(items: Item[], referenceDate: string, customOrder: string[] = []) {
-  const hoje = deriveHojeDomain(items, referenceDate);
+  const hoje = deriveHojeDomain(items, referenceDate, customOrder);
   const rankById = new Map(customOrder.map((id, index) => [id, index]));
 
   const orderedTodayItems = [...hoje.dayItems].sort((left, right) => {

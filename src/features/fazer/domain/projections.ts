@@ -1,8 +1,8 @@
 import type { Item } from '../../../lib/types';
 import { deriveHojeDomain } from './derived';
 
-export function projectHojeSections(items: Item[], referenceDate: string) {
-  const domain = deriveHojeDomain(items, referenceDate);
+export function projectHojeSections(items: Item[], referenceDate: string, ritualOrder: string[] = []) {
+  const domain = deriveHojeDomain(items, referenceDate, ritualOrder);
 
   return {
     header: {

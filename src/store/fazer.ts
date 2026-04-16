@@ -13,12 +13,14 @@ import { projectHojeSections } from '../features/fazer/domain/projections';
 
 export function useHojeDomain() {
   const items = useDataStore((state) => state.items);
-  return deriveHojeDomain(items, today());
+  const ritualOrder = useDataStore((state) => state.ritualOrder);
+  return deriveHojeDomain(items, today(), ritualOrder);
 }
 
 export function useHojeProjection() {
   const items = useDataStore((state) => state.items);
-  return projectHojeSections(items, today());
+  const ritualOrder = useDataStore((state) => state.ritualOrder);
+  return projectHojeSections(items, today(), ritualOrder);
 }
 
 export function useRitualDomain() {

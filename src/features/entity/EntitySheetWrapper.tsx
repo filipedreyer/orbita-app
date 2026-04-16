@@ -7,7 +7,7 @@
  */
 import type { Item } from '../../lib/types';
 import { EntitySheet } from './EntitySheet';
-import { EntitySheetFooter } from './EntitySheetFooter';
+import { EntitySheetCommitmentFooter } from './EntitySheetCommitmentFooter';
 import { EntitySheetHeader } from './EntitySheetHeader';
 
 export function EntitySheetWrapper({
@@ -33,7 +33,7 @@ export function EntitySheetWrapper({
       <EntitySheet item={item} visible={visible} onClose={onClose} onEdit={onEdit} />
       <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[45] flex justify-center p-4">
         <div className="pointer-events-auto w-full max-w-2xl">
-          <EntitySheetFooter item={item} />
+          <EntitySheetCommitmentFooter item={item} />
         </div>
       </div>
     </>

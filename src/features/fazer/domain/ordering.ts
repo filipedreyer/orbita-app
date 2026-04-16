@@ -1,0 +1,85 @@
+import type { Item } from '../../../lib/types';
+import { isOverdueItem } from './canonical';
+
+export const DAY_SUBGROUPS = ['A', 'B', 'C', 'D'] as const;
+export type DaySubgroup = (typeof DAY_SUBGROUPS)[number];
+
+function getPlanningHorizon(item: Item) {
+  const metadata = item.metadata as Record<string, unknown>;
+  const horizon = metadata.horizonte;
+  return horizon === 'imediato' || horizon === 'semana' || horizon === 'depois' ? horizon : null;
+}
+
+export function hasOperationalCommitment(item: Item) {
+  const metadata = item.metadata as Record<string, unknown>;
+  return metadata.compromisso_operacional === true;
+}
+
+export function isOperationalCommitmentCoherent(item: Item) {
+  const horizon = getPlanningHorizon(item);
+
+  // DECISÃO: nesta mini-fase, o horizonte serve apenas como validação leve e transitória
+  // para `compromisso_operacional`; isso não define o modelo final de integração.
+  return hasOperationalCommitment(item) && horizon === 'imediato';
+}
+
+export function getDaySubgroup(item: Item): DaySubgroup {
+  // DECISÃO: nesta mini-fase, os subgrupos operacionais são restaurados com a semântica
+  // mínima necessária para o fluxo atual de Hoje/Ritual:
+  // A = compromissos fixos do dia (evento, lembrete, inegociável)
+  // B = entregas/tarefas datadas
+  // C = práticas recorrentes (hábito, rotina)
+  // D = tarefas flexíveis sem data
+  if (item.type === 'evento' || item.type === 'lembrete' || item.type === 'inegociavel') {
+    return 'A';
+  }
+
+  if (item.type === 'tarefa' && item.due_date) {
+    return 'B';
+  }
+
+  if (item.type === 'habito' || item.type === 'rotina') {
+    return 'C';
+  }
+
+  return 'D';
+}
+
+export function sortDayItems(items: Item[], referenceDate: string, ritualOrder: string[] = []) {
+  const priorityRank: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+  const subgroupRank: Record<DaySubgroup, number> = { A: 0, B: 1, C: 2, D: 3 };
+  const ritualRank = new Map(ritualOrder.map((id, index) => [id, index]));
+
+  return [...items].sort((left, right) => {
+    const leftManualRank = ritualRank.get(left.id);
+    const rightManualRank = ritualRank.get(right.id);
+    const leftHasManualPosition = leftManualRank !== undefined;
+    const rightHasManualPosition = rightManualRank !== undefined;
+
+    if (leftHasManualPosition && rightHasManualPosition && leftManualRank !== rightManualRank) {
+      return leftManualRank - rightManualRank;
+    }
+
+    if (leftHasManualPosition !== rightHasManualPosition) {
+      return leftHasManualPosition ? -1 : 1;
+    }
+
+    const leftSubgroup = subgroupRank[getDaySubgroup(left)];
+    const rightSubgroup = subgroupRank[getDaySubgroup(right)];
+    if (leftSubgroup !== rightSubgroup) return leftSubgroup - rightSubgroup;
+
+    const leftOverdue = isOverdueItem(left, referenceDate) ? 0 : 1;
+    const rightOverdue = isOverdueItem(right, referenceDate) ? 0 : 1;
+    if (leftOverdue !== rightOverdue) return leftOverdue - rightOverdue;
+
+    const leftCommitted = isOperationalCommitmentCoherent(left) ? 0 : 1;
+    const rightCommitted = isOperationalCommitmentCoherent(right) ? 0 : 1;
+    if (leftCommitted !== rightCommitted) return leftCommitted - rightCommitted;
+
+    const leftPriority = priorityRank[left.priority ?? ''] ?? 3;
+    const rightPriority = priorityRank[right.priority ?? ''] ?? 3;
+    if (leftPriority !== rightPriority) return leftPriority - rightPriority;
+
+    return (left.due_date ?? '9999-12-31').localeCompare(right.due_date ?? '9999-12-31');
+  });
+}
