@@ -1,0 +1,18 @@
+import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
+
+export function DirectionLabel({ direction }: { direction: 'up' | 'stable' | 'down' }) {
+  const config = {
+    up: { icon: ArrowUp, label: 'Aproximando', color: 'var(--green)' },
+    stable: { icon: ArrowRight, label: 'Estável', color: 'var(--yellow)' },
+    down: { icon: ArrowDown, label: 'Afastando', color: 'var(--red)' },
+  }[direction];
+
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-center gap-1 text-sm font-semibold" style={{ color: config.color }}>
+      <Icon className="h-4 w-4" />
+      <span>{config.label}</span>
+    </div>
+  );
+}

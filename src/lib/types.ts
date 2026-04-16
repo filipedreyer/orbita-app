@@ -16,6 +16,7 @@ export type EntityStatus = 'active' | 'done' | 'cancelled' | 'archived' | 'pause
 export type FrequencyType = 'daily' | 'weekly' | 'monthly';
 export type GoalDirection = 'up' | 'stable' | 'down';
 export type InegociavelRuleType = 'bloco_tempo' | 'frequencia' | 'limite';
+export type CaptureType = 'inbox' | EntityType;
 
 export interface HabitMetadata {
   frequency: FrequencyType;
@@ -122,4 +123,10 @@ export const typeLabels: Record<EntityType, string> = {
   lembrete: 'Lembrete',
   lista: 'Lista',
   inegociavel: 'Inegociável',
+};
+
+export const frequencyLabels: Record<FrequencyType, string> = {
+  daily: 'Diário',
+  weekly: 'Semanal',
+  monthly: 'Mensal',
 };

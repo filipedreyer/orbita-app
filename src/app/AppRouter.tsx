@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { routes } from './routes';
@@ -10,9 +11,17 @@ import { useAuth } from '../features/auth/AuthProvider';
 import { FazerHomePage } from '../features/fazer/FazerHomePage';
 import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
 import { PlanejarHomePage } from '../features/planejar/PlanejarHomePage';
+import { useDataStore } from '../store';
 
 function ProtectedApp() {
   const { session, loading } = useAuth();
+  const loadAll = useDataStore((state) => state.loadAll);
+
+  useEffect(() => {
+    if (session?.user) {
+      void loadAll();
+    }
+  }, [loadAll, session]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--text-secondary)]">Carregando sessão...</div>;
