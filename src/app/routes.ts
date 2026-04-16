@@ -1,6 +1,11 @@
 export const routes = {
   home: '/',
   fazer: '/fazer',
+  fazerHoje: '/fazer/hoje',
+  fazerTimeline: '/fazer/timeline',
+  fazerRitual: '/fazer/ritual',
+  fazerEncerramento: '/fazer/encerramento',
+  fazerAtencao: '/fazer/atencao',
   planejar: '/planejar',
   memoria: '/memoria',
   central: '/central',

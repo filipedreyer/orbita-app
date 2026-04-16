@@ -45,6 +45,7 @@ interface DataState {
   items: Item[];
   inbox: InboxItem[];
   subItems: Record<string, SubItem[]>;
+  ritualOrder: string[];
   loading: boolean;
   error: string | null;
   loadAll: () => Promise<void>;
@@ -66,6 +67,9 @@ interface DataState {
   dismissInbox: (inboxId: string) => Promise<void>;
   checkHabit: (itemId: string) => Promise<void>;
   uploadImage: (uri: string, fileName: string) => Promise<string | null>;
+  setRitualOrder: (ids: string[]) => void;
+  moveRitualItem: (itemId: string, direction: 'up' | 'down') => void;
+  clearRitualOrder: () => void;
   reset: () => void;
 }
 
@@ -73,6 +77,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   items: [],
   inbox: [],
   subItems: {},
+  ritualOrder: [],
   loading: false,
   error: null,
   loadAll: async () => {
@@ -292,7 +297,20 @@ export const useDataStore = create<DataState>((set, get) => ({
       return null;
     }
   },
-  reset: () => set({ items: [], inbox: [], subItems: {}, loading: false, error: null }),
+  setRitualOrder: (ids) => set({ ritualOrder: ids }),
+  moveRitualItem: (itemId, direction) =>
+    set((state) => {
+      const current = state.ritualOrder;
+      const index = current.indexOf(itemId);
+      if (index === -1) return state;
+      const target = direction === 'up' ? index - 1 : index + 1;
+      if (target < 0 || target >= current.length) return state;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return { ritualOrder: next };
+    }),
+  clearRitualOrder: () => set({ ritualOrder: [] }),
+  reset: () => set({ items: [], inbox: [], subItems: {}, ritualOrder: [], loading: false, error: null }),
 }));
 
 export const selectByType = (items: Item[], type: EntityType) => items.filter((item) => item.type === type && item.status !== 'archived');
