@@ -15,6 +15,12 @@ export function isActiveItem(item: Item) {
   return item.status === 'active';
 }
 
+function getExplicitPlanningHorizon(item: Item) {
+  const metadata = item.metadata as Record<string, unknown>;
+  const horizon = metadata.horizonte;
+  return horizon === 'imediato' || horizon === 'semana' || horizon === 'depois' ? horizon : null;
+}
+
 export function isDayRelevantType(item: Item) {
   return DAY_ENTITY_TYPES.includes(item.type);
 }
@@ -24,18 +30,34 @@ export function isOverdueItem(item: Item, referenceDate: string) {
 }
 
 export function isTodayEventLike(item: Item, referenceDate: string) {
-  return (item.type === 'evento' || item.type === 'lembrete') && isActiveItem(item) && item.due_date === referenceDate;
+  const planningHorizon = getExplicitPlanningHorizon(item);
+  if (planningHorizon && planningHorizon !== 'imediato') return false;
+
+  return (
+    (item.type === 'evento' || item.type === 'lembrete') &&
+    isActiveItem(item) &&
+    (planningHorizon === 'imediato' || item.due_date === referenceDate)
+  );
 }
 
 export function isTodayHabitLike(item: Item) {
+  const planningHorizon = getExplicitPlanningHorizon(item);
+  if (planningHorizon && planningHorizon !== 'imediato') return false;
+
   return (item.type === 'habito' || item.type === 'rotina') && isActiveItem(item);
 }
 
 export function isTodayTask(item: Item, referenceDate: string) {
-  return item.type === 'tarefa' && isActiveItem(item) && (!item.due_date || item.due_date <= referenceDate);
+  const planningHorizon = getExplicitPlanningHorizon(item);
+  if (planningHorizon && planningHorizon !== 'imediato') return false;
+
+  return item.type === 'tarefa' && isActiveItem(item) && (planningHorizon === 'imediato' || !item.due_date || item.due_date <= referenceDate);
 }
 
 export function isTodayInegociavel(item: Item) {
+  const planningHorizon = getExplicitPlanningHorizon(item);
+  if (planningHorizon && planningHorizon !== 'imediato') return false;
+
   return item.type === 'inegociavel' && isActiveItem(item);
 }
 

@@ -15,7 +15,11 @@ import { PainelAtencaoPage } from '../features/fazer/atencao/PainelAtencaoPage';
 import { RitualPage } from '../features/fazer/ritual/RitualPage';
 import { TimelinePage } from '../features/fazer/timeline/TimelinePage';
 import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
+import { BacklogPage } from '../features/planejar/backlog/BacklogPage';
+import { DependenciasPage } from '../features/planejar/dependencias/DependenciasPage';
 import { PlanejarHomePage } from '../features/planejar/PlanejarHomePage';
+import { PrioridadesPage } from '../features/planejar/prioridades/PrioridadesPage';
+import { ProntosParaFazerPage } from '../features/planejar/prontos/ProntosParaFazerPage';
 import { useDataStore } from '../store';
 
 function ProtectedApp() {
@@ -48,7 +52,13 @@ function ProtectedApp() {
           <Route path="encerramento" element={<EncerramentoPage />} />
           <Route path="atencao" element={<PainelAtencaoPage />} />
         </Route>
-        <Route path={routes.planejar} element={<PlanejarHomePage />} />
+        <Route path={`${routes.planejar}/*`} element={<PlanejarHomePage />}>
+          <Route index element={<Navigate to={routes.planejarBacklog} replace />} />
+          <Route path="backlog" element={<BacklogPage />} />
+          <Route path="prioridades" element={<PrioridadesPage />} />
+          <Route path="dependencias" element={<DependenciasPage />} />
+          <Route path="prontos" element={<ProntosParaFazerPage />} />
+        </Route>
         <Route path={routes.memoria} element={<MemoriaHomePage />} />
         <Route path={routes.central} element={<CentralPage />} />
       </Routes>
