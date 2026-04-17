@@ -2,6 +2,8 @@ import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'luci
 import { NavLink, Outlet } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { routes } from '../../app/routes';
+import { IAOnboarding } from '../ia/IAOnboarding';
+import { useIA } from '../ia/useIA';
 
 const cards = [
   { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direcao e resultados de medio prazo.' },
@@ -11,6 +13,8 @@ const cards = [
 ] as const;
 
 export function PlanearHomePage() {
+  const { routeContext } = useIA();
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -44,6 +48,8 @@ export function PlanearHomePage() {
           </NavLink>
         ))}
       </div>
+
+      <IAOnboarding steps={routeContext.onboardingSteps} />
 
       <Outlet />
     </div>

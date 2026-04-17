@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { Button, Card, Input } from '../../components/ui';
 import { useDataStore } from '../../store';
+import { IASuggestion } from '../ia/IASuggestion';
+import { useIA } from '../ia/useIA';
 import { getPlainText, isDiaryNote, isShortcutItem, matchesMemorySearch } from './memory-helpers';
 
 const hubLinks = [
@@ -17,6 +19,7 @@ export function MemoriaHomePage() {
   const navigate = useNavigate();
   const items = useDataStore((state) => state.items);
   const inbox = useDataStore((state) => state.inbox);
+  const { routeContext, completedActions, triggerAction } = useIA();
   const [search, setSearch] = useState('');
 
   const noteItems = useMemo(() => items.filter((item) => item.type === 'nota'), [items]);
@@ -71,6 +74,10 @@ export function MemoriaHomePage() {
           </Card>
         </button>
       </div>
+
+      {routeContext.area === 'memoria' && routeContext.suggestions[0] ? (
+        <IASuggestion suggestion={routeContext.suggestions[0]} completedActions={completedActions} onRunAction={triggerAction} />
+      ) : null}
 
       <Card className="space-y-3 p-4">
         <div className="flex items-center gap-3">

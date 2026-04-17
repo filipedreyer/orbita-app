@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BottomSheet, Button, Input } from '../../../components/ui';
 import { RichTextEditor } from '../../../components/editor/RichTextEditor';
+import { IATextAnalyzer } from '../../ia/IATextAnalyzer';
 
 export function NoteEditorPanel({
   visible,
@@ -47,6 +48,7 @@ export function NoteEditorPanel({
         </label>
 
         <RichTextEditor value={content} onChange={setContent} />
+        <IATextAnalyzer sourceId={`note-editor:${title || 'nova-nota'}`} sourceLabel={title || 'nova nota'} text={content} />
 
         <div className="flex gap-3">
           <Button className="flex-1" variant="ghost" onClick={onClose}>

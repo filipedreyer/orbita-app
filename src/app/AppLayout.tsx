@@ -1,13 +1,15 @@
 import type { PropsWithChildren } from 'react';
-import { Menu, Search, Sparkles } from 'lucide-react';
+import { Bot, FileText, Menu, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from './routes';
 import { BottomTabs } from '../components/navigation/BottomTabs';
 import { FloatingButtons } from '../components/navigation/FloatingButtons';
 import { Button } from '../components/ui/Button';
+import { useIA } from '../features/ia/useIA';
 
 export function AppLayout({ children }: PropsWithChildren) {
   const navigate = useNavigate();
+  const { openChat, openReports } = useIA();
 
   return (
     <div className="min-h-screen bg-[var(--bg)] text-[var(--text)]">
@@ -22,8 +24,11 @@ export function AppLayout({ children }: PropsWithChildren) {
             <Button variant="ghost" size="icon" ariaLabel="Buscar">
               <Search className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" ariaLabel="IA mockada">
-              <Sparkles className="h-4 w-4" />
+            <Button variant="ghost" size="icon" ariaLabel="Relatorios de IA" onClick={openReports}>
+              <FileText className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" ariaLabel="IA mockada" onClick={openChat}>
+              <Bot className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" ariaLabel="Central" onClick={() => navigate(routes.central)}>
               <Menu className="h-4 w-4" />
