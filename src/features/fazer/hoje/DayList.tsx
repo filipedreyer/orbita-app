@@ -25,16 +25,31 @@ export function DayList({
   return (
     <Card>
       {items.map((item, index) => (
-        <CardRow key={item.id} isLast={index === items.length - 1} onPress={() => onOpen(item)}>
-          <Checkbox checked={item.status === 'done'} onToggle={() => onComplete(item)} />
-          <div className="flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-              {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" color="var(--teal)" bgColor="rgba(22, 163, 74, 0.12)" /> : null}
+        item.type === 'inegociavel' ? (
+          <CardRow key={item.id} isLast={index === items.length - 1} onPress={() => onOpen(item)}>
+            <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--teal-light)] text-[10px] font-bold text-[var(--teal)]">
+              F
             </div>
-            <p className="text-xs text-[var(--text-secondary)]">{item.type}</p>
-          </div>
-        </CardRow>
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+                <Badge label="Bloco fixo" color="var(--teal)" bgColor="rgba(22, 163, 74, 0.12)" />
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">inegociavel</p>
+            </div>
+          </CardRow>
+        ) : (
+          <CardRow key={item.id} isLast={index === items.length - 1} onPress={() => onOpen(item)}>
+            <Checkbox checked={item.status === 'done'} onToggle={() => onComplete(item)} />
+            <div className="flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+                {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" color="var(--teal)" bgColor="rgba(22, 163, 74, 0.12)" /> : null}
+              </div>
+              <p className="text-xs text-[var(--text-secondary)]">{item.type}</p>
+            </div>
+          </CardRow>
+        )
       ))}
     </Card>
   );

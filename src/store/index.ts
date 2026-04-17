@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { EntityType, InboxItem, Item, SubItem } from '../lib/types';
 import * as authService from '../services/auth';
 import * as itemsService from '../services/items';
+import * as profileService from '../services/profile';
 import { isPast, today } from '../lib/dates';
 
 interface AuthState {
@@ -85,8 +86,13 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (!session?.user) return;
     set({ loading: true, error: null });
     try {
-      const [items, inbox] = await Promise.all([itemsService.fetchItems(session.user.id), itemsService.fetchInbox(session.user.id)]);
-      set({ items, inbox, loading: false });
+      const [items, inbox, settings] = await Promise.all([
+        itemsService.fetchItems(session.user.id),
+        itemsService.fetchInbox(session.user.id),
+        profileService.fetchProfileSettings(session.user.id),
+      ]);
+      const ritualOrder = settings.ritualOrder?.date === today() ? settings.ritualOrder.ids : [];
+      set({ items, inbox, ritualOrder, loading: false });
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Falha ao carregar dados.', loading: false });
     }
@@ -297,7 +303,23 @@ export const useDataStore = create<DataState>((set, get) => ({
       return null;
     }
   },
-  setRitualOrder: (ids) => set({ ritualOrder: ids }),
+  setRitualOrder: (ids) => {
+    set({ ritualOrder: ids });
+    const session = useAuthStore.getState().session;
+    if (!session?.user) return;
+    void profileService
+      .fetchProfileSettings(session.user.id)
+      .then((settings) =>
+        profileService.updateProfileSettings(session.user.id, {
+          ...settings,
+          ritualOrder: {
+            date: today(),
+            ids,
+          },
+        }),
+      )
+      .catch(() => {});
+  },
   moveRitualItem: (itemId, direction) =>
     set((state) => {
       const current = state.ritualOrder;
@@ -307,9 +329,37 @@ export const useDataStore = create<DataState>((set, get) => ({
       if (target < 0 || target >= current.length) return state;
       const next = [...current];
       [next[index], next[target]] = [next[target], next[index]];
+      const session = useAuthStore.getState().session;
+      if (session?.user) {
+        void profileService
+          .fetchProfileSettings(session.user.id)
+          .then((settings) =>
+            profileService.updateProfileSettings(session.user.id, {
+              ...settings,
+              ritualOrder: {
+                date: today(),
+                ids: next,
+              },
+            }),
+          )
+          .catch(() => {});
+      }
       return { ritualOrder: next };
     }),
-  clearRitualOrder: () => set({ ritualOrder: [] }),
+  clearRitualOrder: () => {
+    set({ ritualOrder: [] });
+    const session = useAuthStore.getState().session;
+    if (!session?.user) return;
+    void profileService
+      .fetchProfileSettings(session.user.id)
+      .then((settings) =>
+        profileService.updateProfileSettings(session.user.id, {
+          ...settings,
+          ritualOrder: null,
+        }),
+      )
+      .catch(() => {});
+  },
   reset: () => set({ items: [], inbox: [], subItems: {}, ritualOrder: [], loading: false, error: null }),
 }));
 

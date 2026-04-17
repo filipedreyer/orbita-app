@@ -100,6 +100,10 @@ export interface UserSettings {
   silenceStart: string;
   silenceEnd: string;
   weeklyReportDay: string;
+  ritualOrder?: {
+    date: string;
+    ids: string[];
+  } | null;
 }
 
 export interface UserProfile {

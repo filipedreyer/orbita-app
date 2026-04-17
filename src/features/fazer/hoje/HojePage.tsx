@@ -10,7 +10,7 @@ import { useHojeProjection } from '../../../store/fazer';
 import { CompletedSection } from './CompletedSection';
 import { DayHeader } from './DayHeader';
 import { DayList } from './DayList';
-import { InegociavelBlock } from './InegociavelBlock';
+import { InegociavelCapacityBlock } from './InegociavelCapacityBlock';
 import { ReminderBanner } from './ReminderBanner';
 
 export function HojePage() {
@@ -33,7 +33,7 @@ export function HojePage() {
     <div className="space-y-4">
       <DayHeader {...projection.header} />
       <ReminderBanner reminders={projection.sections.reminders} />
-      <InegociavelBlock items={projection.sections.inegociaveis} />
+      <InegociavelCapacityBlock items={projection.sections.inegociaveis} />
 
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Lista do dia</h3>

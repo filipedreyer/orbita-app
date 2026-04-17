@@ -58,7 +58,7 @@ export function isTodayInegociavel(item: Item) {
   const planningHorizon = getExplicitPlanningHorizon(item);
   if (planningHorizon && planningHorizon !== 'imediato') return false;
 
-  return item.type === 'inegociavel' && isActiveItem(item);
+  return item.type === 'inegociavel' && isActiveItem(item) && isScheduledInegociavel(item);
 }
 
 export function isItemOfDay(item: Item, referenceDate: string) {
@@ -72,6 +72,11 @@ export function isItemOfDay(item: Item, referenceDate: string) {
 
 export function getInegociavelMetadata(item: Item): InegociavelMetadata | null {
   return item.type === 'inegociavel' ? (item.metadata as InegociavelMetadata) : null;
+}
+
+export function isScheduledInegociavel(item: Item) {
+  const metadata = getInegociavelMetadata(item);
+  return !!metadata && (!!metadata.horario_inicio || !!metadata.horario_fim);
 }
 
 export function isInegociavelBlock(item: Item) {

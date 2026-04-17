@@ -1,5 +1,5 @@
 import type { Item } from '../../../lib/types';
-import { isOverdueItem } from './canonical';
+import { isOverdueItem, isScheduledInegociavel } from './canonical';
 
 export const DAY_SUBGROUPS = ['A', 'B', 'C', 'D'] as const;
 export type DaySubgroup = (typeof DAY_SUBGROUPS)[number];
@@ -45,25 +45,15 @@ export function getDaySubgroup(item: Item): DaySubgroup {
   return 'D';
 }
 
-export function sortDayItems(items: Item[], referenceDate: string, ritualOrder: string[] = []) {
+export function isRitualLockedItem(item: Item) {
+  return item.type === 'inegociavel' && isScheduledInegociavel(item);
+}
+
+function sortDayItemsAutomatically(items: Item[], referenceDate: string) {
   const priorityRank: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
   const subgroupRank: Record<DaySubgroup, number> = { A: 0, B: 1, C: 2, D: 3 };
-  const ritualRank = new Map(ritualOrder.map((id, index) => [id, index]));
 
   return [...items].sort((left, right) => {
-    const leftManualRank = ritualRank.get(left.id);
-    const rightManualRank = ritualRank.get(right.id);
-    const leftHasManualPosition = leftManualRank !== undefined;
-    const rightHasManualPosition = rightManualRank !== undefined;
-
-    if (leftHasManualPosition && rightHasManualPosition && leftManualRank !== rightManualRank) {
-      return leftManualRank - rightManualRank;
-    }
-
-    if (leftHasManualPosition !== rightHasManualPosition) {
-      return leftHasManualPosition ? -1 : 1;
-    }
-
     const leftSubgroup = subgroupRank[getDaySubgroup(left)];
     const rightSubgroup = subgroupRank[getDaySubgroup(right)];
     if (leftSubgroup !== rightSubgroup) return leftSubgroup - rightSubgroup;
@@ -81,5 +71,31 @@ export function sortDayItems(items: Item[], referenceDate: string, ritualOrder: 
     if (leftPriority !== rightPriority) return leftPriority - rightPriority;
 
     return (left.due_date ?? '9999-12-31').localeCompare(right.due_date ?? '9999-12-31');
+  });
+}
+
+export function normalizeRitualOrder(dayItems: Item[], referenceDate: string, ritualOrder: string[] = []) {
+  const autoSortedItems = sortDayItemsAutomatically(dayItems, referenceDate);
+  const sortableItems = autoSortedItems.filter((item) => !isRitualLockedItem(item));
+  const validIds = new Set(sortableItems.map((item) => item.id));
+  const uniqueManualIds = ritualOrder.filter((id, index) => validIds.has(id) && ritualOrder.indexOf(id) === index);
+  const remainingIds = sortableItems.filter((item) => !uniqueManualIds.includes(item.id)).map((item) => item.id);
+
+  return [...uniqueManualIds, ...remainingIds];
+}
+
+export function sortDayItems(items: Item[], referenceDate: string, ritualOrder: string[] = []) {
+  const autoSortedItems = sortDayItemsAutomatically(items, referenceDate);
+  const normalizedRitualOrder = normalizeRitualOrder(items, referenceDate, ritualOrder);
+  const sortableQueue = normalizedRitualOrder
+    .map((id) => autoSortedItems.find((item) => item.id === id))
+    .filter((item): item is Item => !!item);
+
+  return autoSortedItems.map((item) => {
+    if (isRitualLockedItem(item)) {
+      return item;
+    }
+
+    return sortableQueue.shift() ?? item;
   });
 }

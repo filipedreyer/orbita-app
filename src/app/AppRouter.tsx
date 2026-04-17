@@ -14,7 +14,7 @@ import { HojePage } from '../features/fazer/hoje/HojePage';
 import { PainelAtencaoPage } from '../features/fazer/atencao/PainelAtencaoPage';
 import { RitualPage } from '../features/fazer/ritual/RitualPage';
 import { TimelinePage } from '../features/fazer/timeline/TimelinePage';
-import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
+import { MemoriaHomePageV2 } from '../features/memoria/MemoriaHomePageV2';
 import { BacklogPage } from '../features/planejar/backlog/BacklogPage';
 import { DependenciasPage } from '../features/planejar/dependencias/DependenciasPage';
 import { PlanejarHomePage } from '../features/planejar/PlanejarHomePage';
@@ -59,7 +59,7 @@ function ProtectedApp() {
           <Route path="dependencias" element={<DependenciasPage />} />
           <Route path="prontos" element={<ProntosParaFazerPage />} />
         </Route>
-        <Route path={routes.memoria} element={<MemoriaHomePage />} />
+        <Route path={routes.memoria} element={<MemoriaHomePageV2 />} />
         <Route path={routes.central} element={<CentralPage />} />
       </Routes>
     </AppLayout>
