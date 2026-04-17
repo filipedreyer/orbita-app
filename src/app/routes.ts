@@ -11,6 +11,7 @@ export const routes = {
   planejarProjetos: '/planejar/projetos',
   planejarHabitos: '/planejar/habitos',
   planejarInegociaveis: '/planejar/inegociaveis',
+  planejarRevisaoSemanal: '/planejar/revisao-semanal',
   memoria: '/memoria',
   memoriaInbox: '/memoria/inbox',
   memoriaItens: '/memoria/itens',

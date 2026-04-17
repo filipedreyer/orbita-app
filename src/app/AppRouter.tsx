@@ -6,12 +6,12 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignupPage } from '../features/auth/SignupPage';
-import { CentralPage } from '../features/central/CentralPage';
 import { useAuth } from '../features/auth/AuthProvider';
+import { CentralPage } from '../features/central/CentralPage';
 import { FazerHomePage } from '../features/fazer/FazerHomePage';
+import { PainelAtencaoPage } from '../features/fazer/atencao/PainelAtencaoPage';
 import { EncerramentoPage } from '../features/fazer/encerramento/EncerramentoPage';
 import { HojePage } from '../features/fazer/hoje/HojePage';
-import { PainelAtencaoPage } from '../features/fazer/atencao/PainelAtencaoPage';
 import { RitualPage } from '../features/fazer/ritual/RitualPage';
 import { TimelinePage } from '../features/fazer/timeline/TimelinePage';
 import { AnexosPage } from '../features/memoria/AnexosPage';
@@ -23,8 +23,12 @@ import { ItensPage } from '../features/memoria/ItensPage';
 import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
 import { MemoriaLayout } from '../features/memoria/MemoriaLayout';
 import { TemplatesPage } from '../features/memoria/TemplatesPage';
+import { HabitosPage } from '../features/planejar/HabitosPage';
+import { InegociaveisPage } from '../features/planejar/InegociaveisPage';
+import { MetasPage } from '../features/planejar/MetasPage';
 import { PlanearHomePage } from '../features/planejar/PlanearHomePage';
-import { PlanejarPlaceholderPage } from '../features/planejar/PlanejarPlaceholderPage';
+import { ProjetosPage } from '../features/planejar/ProjetosPage';
+import { RevisaoSemanalPage } from '../features/planejar/RevisaoSemanalPage';
 import { useDataStore } from '../store';
 
 function ProtectedApp() {
@@ -38,7 +42,7 @@ function ProtectedApp() {
   }, [loadAll, session]);
 
   if (loading) {
-    return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--text-secondary)]">Carregando sessão...</div>;
+    return <div className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-[var(--text-secondary)]">Carregando sessao...</div>;
   }
 
   if (!session) {
@@ -58,19 +62,12 @@ function ProtectedApp() {
           <Route path="atencao" element={<PainelAtencaoPage />} />
         </Route>
         <Route path={`${routes.planejar}/*`} element={<PlanearHomePage />}>
-          <Route
-            index
-            element={
-              <PlanejarPlaceholderPage
-                title="Selecione um card do portfólio"
-                description="O detalhamento de domínio entra na Fase 5. Nesta fase, Planejar existe como hub de navegação."
-              />
-            }
-          />
-          <Route path="metas" element={<PlanejarPlaceholderPage title="Metas" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
-          <Route path="projetos" element={<PlanejarPlaceholderPage title="Projetos" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
-          <Route path="habitos" element={<PlanejarPlaceholderPage title="Hábitos" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
-          <Route path="inegociaveis" element={<PlanejarPlaceholderPage title="Inegociáveis" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
+          <Route index element={<Navigate to={routes.planejarMetas} replace />} />
+          <Route path="metas" element={<MetasPage />} />
+          <Route path="projetos" element={<ProjetosPage />} />
+          <Route path="habitos" element={<HabitosPage />} />
+          <Route path="inegociaveis" element={<InegociaveisPage />} />
+          <Route path="revisao-semanal" element={<RevisaoSemanalPage />} />
         </Route>
         <Route path={`${routes.memoria}/*`} element={<MemoriaLayout />}>
           <Route index element={<MemoriaHomePage />} />

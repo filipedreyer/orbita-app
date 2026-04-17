@@ -1,24 +1,34 @@
-import { Flag, FolderKanban, HeartPulse, ShieldCheck } from 'lucide-react';
+import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'lucide-react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Card } from '../../components/ui';
+import { Button, Card } from '../../components/ui';
 import { routes } from '../../app/routes';
 
 const cards = [
-  { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direção e resultados de médio prazo.' },
-  { label: 'Projetos', path: routes.planejarProjetos, icon: FolderKanban, description: 'Frentes concretas que precisam de avanço.' },
-  { label: 'Hábitos', path: routes.planejarHabitos, icon: HeartPulse, description: 'Ciclos recorrentes que sustentam o sistema.' },
-  { label: 'Inegociáveis', path: routes.planejarInegociaveis, icon: ShieldCheck, description: 'Restrições e proteções estruturais.' },
+  { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direcao e resultados de medio prazo.' },
+  { label: 'Projetos', path: routes.planejarProjetos, icon: FolderKanban, description: 'Frentes concretas que precisam de avanco.' },
+  { label: 'Habitos', path: routes.planejarHabitos, icon: HeartPulse, description: 'Ciclos recorrentes que sustentam o sistema.' },
+  { label: 'Inegociaveis', path: routes.planejarInegociaveis, icon: ShieldCheck, description: 'Restricoes e protecoes estruturais.' },
 ] as const;
 
 export function PlanearHomePage() {
   return (
     <div className="space-y-4">
-      <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Planejar</p>
-        <h2 className="mt-2 text-3xl font-bold tracking-[-0.04em]">Portfólio do sistema</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-          Este é o hub-esqueleto da Fase 4. O detalhamento de Metas, Projetos, Hábitos e Inegociáveis entra apenas na Fase 5.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Planejar</p>
+          <h2 className="mt-2 text-3xl font-bold tracking-[-0.04em]">Portfolio do sistema</h2>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+            Planejar agora usa a estrutura final da spec: Metas, Projetos, Habitos, Inegociaveis e Revisao Semanal como superficies reais.
+          </p>
+        </div>
+        <NavLink to={routes.planejarRevisaoSemanal}>
+          {({ isActive }) => (
+            <Button variant={isActive ? 'primary' : 'secondary'}>
+              <CalendarClock className="h-4 w-4" />
+              Revisao semanal
+            </Button>
+          )}
+        </NavLink>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

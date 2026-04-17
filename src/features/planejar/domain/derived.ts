@@ -1,5 +1,6 @@
 import type { Item } from '../../../lib/types';
 import { deriveHojeDomain } from '../../fazer/domain/derived';
+import { isActiveItem } from '../../fazer/domain/canonical';
 import {
   BASIC_PRIORITY_RULE,
   compareByBasicPriority,
@@ -40,5 +41,50 @@ export function derivePlanejarDomain(items: Item[], referenceDate: string) {
       blocked: hasBlockingDependency(item, eligibleItems),
       blockedByIds: getBlockingDependencyIds(item),
     })),
+  };
+}
+
+export function derivePlanejarPortfolio(items: Item[], referenceDate: string) {
+  const activeItems = items.filter(isActiveItem);
+  const goals = activeItems.filter((item) => item.type === 'meta');
+  const projects = activeItems.filter((item) => item.type === 'projeto');
+  const habits = activeItems.filter((item) => item.type === 'habito');
+  const inegociaveis = activeItems.filter((item) => item.type === 'inegociavel');
+
+  const projectsByGoal = new Map<string, Item[]>();
+  projects.forEach((project) => {
+    if (!project.goal_id) return;
+    const current = projectsByGoal.get(project.goal_id) ?? [];
+    projectsByGoal.set(project.goal_id, [...current, project]);
+  });
+
+  const tasksByProject = new Map<string, Item[]>();
+  activeItems
+    .filter((item) => item.type === 'tarefa' && item.project_id)
+    .forEach((task) => {
+      if (!task.project_id) return;
+      const current = tasksByProject.get(task.project_id) ?? [];
+      tasksByProject.set(task.project_id, [...current, task]);
+    });
+
+  const weeklyReview = {
+    referenceDate,
+    goalsCount: goals.length,
+    projectsCount: projects.length,
+    habitsCount: habits.length,
+    inegociaveisCount: inegociaveis.length,
+    completedThisWeek: items.filter((item) => item.status === 'done' && !!item.completed_at && item.completed_at.slice(0, 10) >= referenceDate.slice(0, 8) + '01').length,
+    overdueOpenCount: items.filter((item) => item.type === 'tarefa' && item.status === 'active' && !!item.due_date && item.due_date < referenceDate).length,
+  };
+
+  return {
+    referenceDate,
+    goals,
+    projects,
+    habits,
+    inegociaveis,
+    projectsByGoal,
+    tasksByProject,
+    weeklyReview,
   };
 }

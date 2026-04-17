@@ -7,7 +7,7 @@
  * Projecoes de UI vivem em `features/planejar/domain/projections.ts`.
  */
 import { today } from '../lib/dates';
-import { derivePlanejarDomain } from '../features/planejar/domain/derived';
+import { derivePlanejarDomain, derivePlanejarPortfolio } from '../features/planejar/domain/derived';
 import { projectPlanejarView } from '../features/planejar/domain/projections';
 import { useDataStore } from './index';
 
@@ -19,4 +19,9 @@ export function usePlanejarDomain() {
 export function usePlanejarProjection() {
   const items = useDataStore((state) => state.items);
   return projectPlanejarView(items, today());
+}
+
+export function usePlanejarPortfolio() {
+  const items = useDataStore((state) => state.items);
+  return derivePlanejarPortfolio(items, today());
 }
