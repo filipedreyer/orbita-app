@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { GitBranch } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import type { DependencyTreeNode } from '../domain/derived';
@@ -14,24 +15,27 @@ function TreeBranch({
   const isHighlighted = highlightedChainIds.size === 0 || highlightedChainIds.has(node.item.id);
 
   return (
-    <div className="space-y-2">
-      <div
-        className={`rounded-2xl border px-4 py-3 ${
-          isHighlighted ? 'border-[var(--teal)] bg-[var(--teal-light)]' : 'border-[var(--border)] bg-[var(--surface-alt)]'
-        }`}
-        style={{ marginLeft: `${depth * 20}px` }}
-      >
-        <p className="text-sm font-medium text-[var(--text)]">{node.item.title}</p>
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">
-          {node.item.type}
-          {node.isFocusItem ? ' Â· item do dia' : ' Â· contexto'}
-        </p>
+    <motion.div className="space-y-2" initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.18 + depth * 0.03 }}>
+      <div className="relative">
+        {depth > 0 ? <div className="absolute -left-3 top-0 h-full w-px bg-[var(--border)]" /> : null}
+        <div
+          className={`rounded-2xl border px-4 py-3 ${
+            isHighlighted ? 'border-[var(--teal)] bg-[var(--teal-light)]' : 'border-[var(--border)] bg-[var(--surface-alt)]'
+          }`}
+          style={{ marginLeft: `${depth * 20}px` }}
+        >
+          <p className="text-sm font-medium text-[var(--text)]">{node.item.title}</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            {node.item.type}
+            {node.isFocusItem ? ' · item do dia' : ' · contexto'}
+          </p>
+        </div>
       </div>
 
       {node.children.map((child) => (
         <TreeBranch key={child.item.id} node={child} depth={depth + 1} highlightedChainIds={highlightedChainIds} />
       ))}
-    </div>
+    </motion.div>
   );
 }
 

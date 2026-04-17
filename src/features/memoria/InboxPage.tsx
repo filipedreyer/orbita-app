@@ -1,5 +1,6 @@
 import { Edit3, FilePlus2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
 import { Button, Card, Input } from '../../components/ui';
 import { useAuthStore, useDataStore } from '../../store';
 import type { EntityType, InboxItem } from '../../lib/types';
@@ -8,8 +9,10 @@ export function InboxPage() {
   const session = useAuthStore((state) => state.session);
   const inbox = useDataStore((state) => state.inbox);
   const addItem = useDataStore((state) => state.addItem);
+  const addToInbox = useDataStore((state) => state.addToInbox);
   const dismissInbox = useDataStore((state) => state.dismissInbox);
   const updateInboxItem = useDataStore((state) => state.updateInboxItem);
+  const { showFeedback } = useActionFeedback();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftText, setDraftText] = useState('');
 
@@ -35,12 +38,14 @@ export function InboxPage() {
     await dismissInbox(item.id);
     setEditingId(null);
     setDraftText('');
+    showFeedback(`Inbox aceita como ${asType}.`);
   }
 
   async function handleSaveEdit(item: InboxItem) {
     await updateInboxItem(item.id, { text: draftText.trim() || item.text });
     setEditingId(null);
     setDraftText('');
+    showFeedback('Edicao salva na inbox.');
   }
 
   return (
@@ -57,7 +62,7 @@ export function InboxPage() {
               <div className="space-y-3">
                 <Input value={draftText} onChange={(event) => setDraftText(event.target.value)} />
                 <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => void handleSaveEdit(item)}>Salvar edição</Button>
+                  <Button variant="secondary" onClick={() => void handleSaveEdit(item)}>Salvar edicao</Button>
                   <Button variant="ghost" onClick={() => { setEditingId(null); setDraftText(''); }}>Cancelar</Button>
                 </div>
               </div>
@@ -77,7 +82,18 @@ export function InboxPage() {
                 <Edit3 className="h-4 w-4" />
                 Editar
               </Button>
-              <Button variant="ghost" onClick={() => void dismissInbox(item.id)}>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  void dismissInbox(item.id);
+                  showFeedback('Item descartado da inbox.', {
+                    undoLabel: 'Desfazer',
+                    onUndo: () => {
+                      void addToInbox(item.text, item.image_url);
+                    },
+                  });
+                }}
+              >
                 <Trash2 className="h-4 w-4" />
                 Descartar
               </Button>

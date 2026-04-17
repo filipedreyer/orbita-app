@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
 import { useAuthStore, useDataStore } from '../../../store';
 import { useEncerramentoDomain } from '../../../store/fazer';
 import { StepConexoes } from './StepConexoes';
@@ -13,6 +15,8 @@ export function EncerramentoPageV2() {
   const [stepIndex, setStepIndex] = useState(0);
   const [journal, setJournal] = useState('');
   const [saved, setSaved] = useState(false);
+  const [lightsOut, setLightsOut] = useState(false);
+  const { showFeedback } = useActionFeedback();
 
   const positiveLines = useMemo(() => {
     return [
@@ -46,6 +50,8 @@ export function EncerramentoPageV2() {
     });
 
     setSaved(true);
+    setLightsOut(true);
+    showFeedback('Diario salvo. O dia foi encerrado.');
   }
 
   return (
@@ -55,9 +61,19 @@ export function EncerramentoPageV2() {
         <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Fechar o dia com leveza</h3>
       </div>
 
-      {stepIndex === 0 ? <StepRetrospecto items={domain.completedItems} /> : null}
-      {stepIndex === 1 ? <StepDiario value={journal} onChange={setJournal} /> : null}
-      {stepIndex === 2 ? <StepConexoes lines={positiveLines} /> : null}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={stepIndex}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+        >
+          {stepIndex === 0 ? <StepRetrospecto items={domain.completedItems} /> : null}
+          {stepIndex === 1 ? <StepDiario value={journal} onChange={setJournal} /> : null}
+          {stepIndex === 2 ? <StepConexoes lines={positiveLines} /> : null}
+        </motion.div>
+      </AnimatePresence>
 
       <div className="flex justify-between gap-3">
         <Button variant="ghost" disabled={stepIndex === 0} onClick={() => setStepIndex((current) => Math.max(0, current - 1))}>
@@ -69,6 +85,29 @@ export function EncerramentoPageV2() {
           <Button onClick={handleFinish}>{saved ? 'Diario salvo' : 'Encerrar o dia'}</Button>
         )}
       </div>
+
+      <AnimatePresence>
+        {lightsOut ? (
+          <motion.div
+            className="pointer-events-none fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/60"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: 'easeOut', delay: 0.12 }}
+              className="rounded-3xl border border-white/10 bg-white/8 px-6 py-5 text-center backdrop-blur"
+            >
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Encerramento</p>
+              <p className="mt-3 text-xl font-semibold text-white">Luzes baixando suavemente</p>
+              <p className="mt-2 text-sm text-white/70">Dia salvo. Agora e hora de desligar.</p>
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

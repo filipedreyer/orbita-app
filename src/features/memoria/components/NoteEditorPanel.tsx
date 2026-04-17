@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
 import { BottomSheet, Button, Input } from '../../../components/ui';
 import { RichTextEditor } from '../../../components/editor/RichTextEditor';
 import { IATextAnalyzer } from '../../ia/IATextAnalyzer';
@@ -21,6 +22,7 @@ export function NoteEditorPanel({
   const [title, setTitle] = useState(initialTitle);
   const [content, setContent] = useState(initialContent);
   const [saving, setSaving] = useState(false);
+  const { showFeedback } = useActionFeedback();
 
   useEffect(() => {
     if (!visible) return;
@@ -33,6 +35,7 @@ export function NoteEditorPanel({
     setSaving(true);
     try {
       await onSave({ title: title.trim(), content });
+      showFeedback('Nota salva com sucesso.');
       onClose();
     } finally {
       setSaving(false);

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
 import { Button } from '../../../components/ui/Button';
 import { CaptureModal } from '../../capture/CaptureModal';
 import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
@@ -20,17 +21,26 @@ export function HojePage() {
   const projection = useHojeProjection();
   const completeItem = useDataStore((state) => state.completeItem);
   const checkHabit = useDataStore((state) => state.checkHabit);
+  const updateItem = useDataStore((state) => state.updateItem);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const { routeContext, completedActions, triggerAction } = useIA();
+  const { showFeedback } = useActionFeedback();
 
   async function handleComplete(item: Item) {
     if (item.type === 'habito' || item.type === 'rotina') {
       await checkHabit(item.id);
+      showFeedback(`${item.title} registrado no dia.`);
       return;
     }
 
     await completeItem(item.id);
+    showFeedback(`${item.title} concluido.`, {
+      undoLabel: 'Desfazer',
+      onUndo: () => {
+        void updateItem(item.id, { status: 'active', completed_at: null });
+      },
+    });
   }
 
   return (
@@ -68,7 +78,7 @@ export function HojePage() {
         />
       ) : null}
 
-      <p className="text-xs text-[var(--text-tertiary)]">Referência do domínio canônico: {today()}</p>
+      <p className="text-xs text-[var(--text-tertiary)]">Referencia do dominio canonico: {today()}</p>
     </div>
   );
 }

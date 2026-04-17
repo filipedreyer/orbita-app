@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 import { AlertTriangle, Eye, ShieldAlert } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
@@ -49,8 +50,9 @@ export function PainelAtencaoPageV2() {
         </p>
       </Card>
 
-      {zones.map((zone) => (
-        <Card key={zone.key} className="space-y-3">
+      {zones.map((zone, zoneIndex) => (
+        <motion.div key={zone.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.18, delay: zoneIndex * 0.04 }}>
+        <Card className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm font-semibold" style={{ color: zone.color }}>
               {zone.label}
@@ -64,7 +66,7 @@ export function PainelAtencaoPageV2() {
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedItem(item)}
-                  className="flex w-full items-center justify-between rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-left"
+                  className="flex w-full items-center justify-between rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-left transition hover:-translate-y-0.5"
                 >
                   <div>
                     <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
@@ -78,6 +80,7 @@ export function PainelAtencaoPageV2() {
             <div className="rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">Nenhum item nesta zona.</div>
           )}
         </Card>
+        </motion.div>
       ))}
 
       {selectedItem ? (

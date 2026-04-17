@@ -1,14 +1,16 @@
 import type { PropsWithChildren } from 'react';
 import { Bot, FileText, Menu, Search } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { routes } from './routes';
 import { BottomTabs } from '../components/navigation/BottomTabs';
 import { FloatingButtons } from '../components/navigation/FloatingButtons';
+import { PageTransition } from '../components/motion/PageTransition';
 import { Button } from '../components/ui/Button';
 import { useIA } from '../features/ia/useIA';
 
 export function AppLayout({ children }: PropsWithChildren) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { openChat, openReports } = useIA();
 
   return (
@@ -37,7 +39,9 @@ export function AppLayout({ children }: PropsWithChildren) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 pb-28 pt-6">
+        <PageTransition key={location.pathname}>{children}</PageTransition>
+      </main>
 
       <FloatingButtons />
       <BottomTabs />
