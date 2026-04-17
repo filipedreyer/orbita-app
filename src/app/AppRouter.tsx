@@ -14,12 +14,17 @@ import { HojePage } from '../features/fazer/hoje/HojePage';
 import { PainelAtencaoPage } from '../features/fazer/atencao/PainelAtencaoPage';
 import { RitualPage } from '../features/fazer/ritual/RitualPage';
 import { TimelinePage } from '../features/fazer/timeline/TimelinePage';
-import { MemoriaHomePageV2 } from '../features/memoria/MemoriaHomePageV2';
-import { BacklogPage } from '../features/planejar/backlog/BacklogPage';
-import { DependenciasPage } from '../features/planejar/dependencias/DependenciasPage';
-import { PlanejarHomePage } from '../features/planejar/PlanejarHomePage';
-import { PrioridadesPage } from '../features/planejar/prioridades/PrioridadesPage';
-import { ProntosParaFazerPage } from '../features/planejar/prontos/ProntosParaFazerPage';
+import { AnexosPage } from '../features/memoria/AnexosPage';
+import { ArquivadosPage } from '../features/memoria/ArquivadosPage';
+import { AtalhosPage } from '../features/memoria/AtalhosPage';
+import { CaixolaPage } from '../features/memoria/CaixolaPage';
+import { InboxPage } from '../features/memoria/InboxPage';
+import { ItensPage } from '../features/memoria/ItensPage';
+import { MemoriaHomePage } from '../features/memoria/MemoriaHomePage';
+import { MemoriaLayout } from '../features/memoria/MemoriaLayout';
+import { TemplatesPage } from '../features/memoria/TemplatesPage';
+import { PlanearHomePage } from '../features/planejar/PlanearHomePage';
+import { PlanejarPlaceholderPage } from '../features/planejar/PlanejarPlaceholderPage';
 import { useDataStore } from '../store';
 
 function ProtectedApp() {
@@ -52,14 +57,31 @@ function ProtectedApp() {
           <Route path="encerramento" element={<EncerramentoPage />} />
           <Route path="atencao" element={<PainelAtencaoPage />} />
         </Route>
-        <Route path={`${routes.planejar}/*`} element={<PlanejarHomePage />}>
-          <Route index element={<Navigate to={routes.planejarBacklog} replace />} />
-          <Route path="backlog" element={<BacklogPage />} />
-          <Route path="prioridades" element={<PrioridadesPage />} />
-          <Route path="dependencias" element={<DependenciasPage />} />
-          <Route path="prontos" element={<ProntosParaFazerPage />} />
+        <Route path={`${routes.planejar}/*`} element={<PlanearHomePage />}>
+          <Route
+            index
+            element={
+              <PlanejarPlaceholderPage
+                title="Selecione um card do portfólio"
+                description="O detalhamento de domínio entra na Fase 5. Nesta fase, Planejar existe como hub de navegação."
+              />
+            }
+          />
+          <Route path="metas" element={<PlanejarPlaceholderPage title="Metas" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
+          <Route path="projetos" element={<PlanejarPlaceholderPage title="Projetos" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
+          <Route path="habitos" element={<PlanejarPlaceholderPage title="Hábitos" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
+          <Route path="inegociaveis" element={<PlanejarPlaceholderPage title="Inegociáveis" description="Placeholder ativo da Fase 4. O detalhamento entra na Fase 5." />} />
         </Route>
-        <Route path={routes.memoria} element={<MemoriaHomePageV2 />} />
+        <Route path={`${routes.memoria}/*`} element={<MemoriaLayout />}>
+          <Route index element={<MemoriaHomePage />} />
+          <Route path="inbox" element={<InboxPage />} />
+          <Route path="itens" element={<ItensPage />} />
+          <Route path="caixola" element={<CaixolaPage />} />
+          <Route path="atalhos" element={<AtalhosPage />} />
+          <Route path="templates" element={<TemplatesPage />} />
+          <Route path="arquivados" element={<ArquivadosPage />} />
+          <Route path="anexos" element={<AnexosPage />} />
+        </Route>
         <Route path={routes.central} element={<CentralPage />} />
       </Routes>
     </AppLayout>

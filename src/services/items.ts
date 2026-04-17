@@ -70,9 +70,26 @@ export async function createInboxItem(item: Omit<InboxItem, 'id' | 'created_at'>
   return data;
 }
 
+export async function updateInboxItem(id: string, updates: Partial<InboxItem>): Promise<InboxItem> {
+  const { data, error } = await supabase.from('inbox').update(updates).eq('id', id).select().single();
+  if (error) throw error;
+  return data;
+}
+
 export async function deleteInboxItem(id: string): Promise<void> {
   const { error } = await supabase.from('inbox').delete().eq('id', id);
   if (error) throw error;
+}
+
+export async function fetchArchivedItems(userId: string): Promise<Item[]> {
+  const { data, error } = await supabase
+    .from('items')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('status', 'archived')
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function logHabit(userId: string, itemId: string, date: string): Promise<HabitLog> {

@@ -66,6 +66,7 @@ interface DataState {
   addToInbox: (text: string, imageUrl?: string | null) => Promise<void>;
   acceptInbox: (inboxId: string, asType?: EntityType) => Promise<void>;
   dismissInbox: (inboxId: string) => Promise<void>;
+  updateInboxItem: (inboxId: string, updates: Partial<InboxItem>) => Promise<void>;
   checkHabit: (itemId: string) => Promise<void>;
   uploadImage: (uri: string, fileName: string) => Promise<string | null>;
   setRitualOrder: (ids: string[]) => void;
@@ -275,6 +276,14 @@ export const useDataStore = create<DataState>((set, get) => ({
       await itemsService.deleteInboxItem(inboxId);
       set((state) => ({ inbox: state.inbox.filter((entry) => entry.id !== inboxId) }));
     } catch {}
+  },
+  updateInboxItem: async (inboxId, updates) => {
+    try {
+      const updated = await itemsService.updateInboxItem(inboxId, updates);
+      set((state) => ({ inbox: state.inbox.map((entry) => (entry.id === inboxId ? updated : entry)) }));
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Falha ao atualizar item da inbox.' });
+    }
   },
   checkHabit: async (itemId) => {
     const session = useAuthStore.getState().session;
