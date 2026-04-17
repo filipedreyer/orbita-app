@@ -1,73 +1,42 @@
-# React + TypeScript + Vite
+﻿# Orbita App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Orbita e um sistema operacional pessoal construido em React, TypeScript, Vite e Supabase.
 
-Currently, two official plugins are available:
+## Baselines do produto
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Fase 3: Fazer consolidado
+- Fase 4: Memoria navegavel + editor TipTap
+- Fase 5: Planejar com superficies reais
+- Fase 6: IA frontend mockada
+- Fase 7: micro interacoes e transicoes
+- Fase 8: polish final para deploy
 
-## React Compiler
+## Ambiente
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Copie `.env.example` para `.env.local` e preencha:
 
-## Expanding the ESLint configuration
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Scripts
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `npm run dev`
+- `npm run build`
+- `npm run lint`
+- `npm run regression:smoke`
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Deploy
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+O projeto esta preparado para deploy SPA em Vercel com `vercel.json` de rewrite para `index.html`.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Exportacao de dados
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- JSON completo por usuario autenticado
+- CSV por entidade em arquivos individuais nesta release
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## PWA
+
+- manifest consistente
+- service worker com auto update
+- instalacao validada pela camada `PwaProvider`
+- suporte offline minimo para shell e assets precacheados

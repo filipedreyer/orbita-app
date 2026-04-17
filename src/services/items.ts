@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+﻿import { supabase } from '../lib/supabase';
 import type { HabitLog, InboxItem, Item, SubItem } from '../lib/types';
 
 export async function fetchItems(userId: string): Promise<Item[]> {
@@ -38,6 +38,12 @@ export async function rescheduleItem(id: string, newDate: string, currentCount: 
 
 export async function fetchSubItems(itemId: string): Promise<SubItem[]> {
   const { data, error } = await supabase.from('sub_items').select('*').eq('item_id', itemId).order('sort_order', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function fetchAllSubItems(userId: string): Promise<SubItem[]> {
+  const { data, error } = await supabase.from('sub_items').select('*').eq('user_id', userId).order('created_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -82,12 +88,7 @@ export async function deleteInboxItem(id: string): Promise<void> {
 }
 
 export async function fetchArchivedItems(userId: string): Promise<Item[]> {
-  const { data, error } = await supabase
-    .from('items')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'archived')
-    .order('updated_at', { ascending: false });
+  const { data, error } = await supabase.from('items').select('*').eq('user_id', userId).eq('status', 'archived').order('updated_at', { ascending: false });
   if (error) throw error;
   return data ?? [];
 }
@@ -96,6 +97,12 @@ export async function logHabit(userId: string, itemId: string, date: string): Pr
   const { data, error } = await supabase.from('habit_logs').insert({ user_id: userId, item_id: itemId, checked_date: date }).select().single();
   if (error) throw error;
   return data;
+}
+
+export async function fetchHabitLogs(userId: string): Promise<HabitLog[]> {
+  const { data, error } = await supabase.from('habit_logs').select('*').eq('user_id', userId).order('checked_date', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function uploadImage(userId: string, uri: string, fileName: string): Promise<string> {

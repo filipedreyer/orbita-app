@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
@@ -15,17 +15,12 @@ export function TimelinePage() {
   const [dependencyView, setDependencyView] = useState<'chains' | 'tree'>('chains');
   const [selectedChainId, setSelectedChainId] = useState<string | null>(domain.dependencyTimeline.chains[0]?.id ?? null);
 
-  useEffect(() => {
-    if (!selectedChainId && domain.dependencyTimeline.chains.length > 0) {
-      setSelectedChainId(domain.dependencyTimeline.chains[0].id);
-    }
+  const effectiveSelectedChainId =
+    selectedChainId && domain.dependencyTimeline.chains.some((chain) => chain.id === selectedChainId)
+      ? selectedChainId
+      : domain.dependencyTimeline.chains[0]?.id ?? null;
 
-    if (selectedChainId && !domain.dependencyTimeline.chains.some((chain) => chain.id === selectedChainId)) {
-      setSelectedChainId(domain.dependencyTimeline.chains[0]?.id ?? null);
-    }
-  }, [domain.dependencyTimeline.chains, selectedChainId]);
-
-  const selectedChain = domain.dependencyTimeline.chains.find((chain) => chain.id === selectedChainId) ?? null;
+  const selectedChain = domain.dependencyTimeline.chains.find((chain) => chain.id === effectiveSelectedChainId) ?? null;
   const highlightedChainIds = useMemo(
     () => new Set(selectedChain ? selectedChain.items.map((item) => item.id) : []),
     [selectedChain],
@@ -91,7 +86,7 @@ export function TimelinePage() {
             <AnimatePresence mode="wait" initial={false}>
               {dependencyView === 'chains' ? (
                 <motion.div key="chains" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ duration: 0.18 }}>
-                  <ChainList chains={domain.dependencyTimeline.chains} selectedChainId={selectedChainId} onSelect={setSelectedChainId} />
+                  <ChainList chains={domain.dependencyTimeline.chains} selectedChainId={effectiveSelectedChainId} onSelect={setSelectedChainId} />
                 </motion.div>
               ) : (
                 <motion.div key="tree" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -12 }} transition={{ duration: 0.18 }}>

@@ -1,9 +1,10 @@
-import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'lucide-react';
-import { NavLink, Outlet } from 'react-router-dom';
+﻿import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { routes } from '../../app/routes';
 import { IAOnboarding } from '../ia/IAOnboarding';
 import { useIA } from '../ia/useIA';
+import { OnboardingChecklist } from '../onboarding/OnboardingChecklist';
 
 const cards = [
   { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direcao e resultados de medio prazo.' },
@@ -13,6 +14,7 @@ const cards = [
 ] as const;
 
 export function PlanearHomePage() {
+  const navigate = useNavigate();
   const { routeContext } = useIA();
 
   return (
@@ -22,7 +24,7 @@ export function PlanearHomePage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Planejar</p>
           <h2 className="mt-2 text-3xl font-bold tracking-[-0.04em]">Portfolio do sistema</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            Planejar agora usa a estrutura final da spec: Metas, Projetos, Habitos, Inegociaveis e Revisao Semanal como superficies reais.
+            Planejar segue a estrutura final da spec: Metas, Projetos, Habitos, Inegociaveis e Revisao Semanal como superficies reais.
           </p>
         </div>
         <NavLink to={routes.planejarRevisaoSemanal}>
@@ -34,6 +36,19 @@ export function PlanearHomePage() {
           )}
         </NavLink>
       </div>
+
+      <OnboardingChecklist
+        area="planejar"
+        title="Como ler o portfolio de Planejar"
+        description="Comece pelas metas, desdobre em projetos, acompanhe habitos e proteja o sistema com inegociaveis."
+        primaryLabel="Abrir Metas"
+        onPrimaryAction={() => navigate(routes.planejarMetas)}
+        steps={[
+          { title: 'Metas', description: 'Defina direcao e resultado esperado.' },
+          { title: 'Projetos', description: 'Traga as frentes reais que movem as metas.' },
+          { title: 'Revisao', description: 'Use a revisao semanal para consolidar o portfolio.' },
+        ]}
+      />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {cards.map((card) => (

@@ -1,4 +1,4 @@
-export const routes = {
+﻿export const routes = {
   home: '/',
   fazer: '/fazer',
   fazerHoje: '/fazer/hoje',
@@ -21,6 +21,7 @@ export const routes = {
   memoriaArquivados: '/memoria/arquivados',
   memoriaAnexos: '/memoria/anexos',
   central: '/central',
+  centralAdmin: '/central/admin',
   login: '/login',
   signup: '/signup',
   forgotPassword: '/forgot-password',
@@ -30,5 +31,5 @@ export const routes = {
 export const tabRoutes = [
   { label: 'Fazer', path: routes.fazer },
   { label: 'Planejar', path: routes.planejar },
-  { label: 'Memória', path: routes.memoria },
+  { label: 'Memoria', path: routes.memoria },
 ] as const;

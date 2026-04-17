@@ -1,4 +1,4 @@
-import { Archive, FileStack, Inbox, Link2, Paperclip, Search, Shapes } from 'lucide-react';
+﻿import { Archive, FileStack, Inbox, Link2, Paperclip, Search, Shapes } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
@@ -6,6 +6,7 @@ import { Button, Card, Input } from '../../components/ui';
 import { useDataStore } from '../../store';
 import { IASuggestion } from '../ia/IASuggestion';
 import { useIA } from '../ia/useIA';
+import { OnboardingChecklist } from '../onboarding/OnboardingChecklist';
 import { getPlainText, isDiaryNote, isShortcutItem, matchesMemorySearch } from './memory-helpers';
 
 const hubLinks = [
@@ -40,6 +41,19 @@ export function MemoriaHomePage() {
 
   return (
     <div className="space-y-4">
+      <OnboardingChecklist
+        area="memoria"
+        title="Como usar a Memoria"
+        description="Capture na Inbox, refine em Itens e consolide conhecimento em Caixola e Diario."
+        primaryLabel="Abrir Inbox"
+        onPrimaryAction={() => navigate(routes.memoriaInbox)}
+        steps={[
+          { title: 'Inbox', description: 'Triagem inicial das capturas ainda sem classificacao.' },
+          { title: 'Caixola', description: 'Notas, diario e templates no mesmo fluxo editorial.' },
+          { title: 'Busca', description: 'Recupere conteudo e reorganize o acervo sem sair da Memoria.' },
+        ]}
+      />
+
       <div className="grid gap-4 md:grid-cols-3">
         <button type="button" onClick={() => navigate(routes.memoriaInbox)} className="text-left">
           <Card className="space-y-3 p-4">
@@ -99,7 +113,7 @@ export function MemoriaHomePage() {
             )}
           </div>
         ) : (
-          <p className="text-sm text-[var(--text-secondary)]">A busca ja funciona como leitura rapida do acervo da Memoria.</p>
+          <p className="text-sm text-[var(--text-secondary)]">A busca funciona como leitura rapida do acervo da Memoria.</p>
         )}
       </Card>
 

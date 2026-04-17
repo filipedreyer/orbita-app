@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+﻿import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -11,10 +11,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Órbita',
-        short_name: 'Órbita',
+        id: '/',
+        name: 'Orbita',
+        short_name: 'Orbita',
         description: 'Seu sistema operacional de vida pessoal',
         start_url: '/',
+        scope: '/',
         display: 'standalone',
         background_color: '#FAFAFA',
         theme_color: '#0E6B6B',
@@ -26,6 +28,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        navigateFallback: '/index.html',
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
