@@ -44,6 +44,17 @@ function keepRemainingSuggestions(
   };
 }
 
+function appendLocalMessages(
+  current: Record<string, IAChatMessage[]>,
+  contextKey: string,
+  messages: IAChatMessage[],
+) {
+  return {
+    ...current,
+    [contextKey]: [...(current[contextKey] ?? []), ...messages],
+  };
+}
+
 export function IAProvider({ children }: PropsWithChildren) {
   const location = useLocation();
   const session = useAuthStore((state) => state.session);
@@ -93,10 +104,7 @@ export function IAProvider({ children }: PropsWithChildren) {
               role: 'assistant',
               content: buildMockReply(routeContext.area, draftMessage.trim()),
             };
-            setLocalMessages((current) => ({
-              ...current,
-              [routeContext.contextKey]: [...(current[routeContext.contextKey] ?? []), userMessage, assistantReply],
-            }));
+            setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [userMessage, assistantReply]));
             setDraftMessage('');
           },
           triggerAction: (action: IAActionDescriptor) => {

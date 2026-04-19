@@ -1,5 +1,5 @@
-import { supabase } from '../../lib/supabase';
 import type { EntityType } from '../../lib/types';
+import { invokeAIFunction } from './invoke';
 
 const CLASSIFY_INBOX_TIMEOUT_MS = 6000;
 
@@ -72,23 +72,11 @@ function isValidSuggestion(data: unknown): data is InboxClassificationSuggestion
 }
 
 export async function classifyInboxWithAI(payload: InboxClassificationPayload) {
-  const invokePromise = supabase.functions.invoke<InboxClassificationSuggestion>('ia-classify-inbox', {
-    body: payload,
-  });
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    window.setTimeout(() => reject(new Error('timeout')), CLASSIFY_INBOX_TIMEOUT_MS);
-  });
-
-  let data: InboxClassificationSuggestion | null = null;
-  let error: unknown = null;
-
-  try {
-    const result = await Promise.race([invokePromise, timeoutPromise]);
-    data = result.data ?? null;
-    error = result.error;
-  } catch {
-    return null;
-  }
+  const { data, error } = await invokeAIFunction<InboxClassificationSuggestion>(
+    'ia-classify-inbox',
+    payload,
+    CLASSIFY_INBOX_TIMEOUT_MS,
+  );
 
   if (error || !isValidSuggestion(data)) {
     return null;

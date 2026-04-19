@@ -35,6 +35,10 @@ export interface IAOnboardingStep {
   done: boolean;
 }
 
+export interface IAReadingResponse {
+  reading: string;
+}
+
 export interface IATextAnalysisSuggestion {
   type: 'tarefa' | 'lembrete' | 'ideia';
   title: string;

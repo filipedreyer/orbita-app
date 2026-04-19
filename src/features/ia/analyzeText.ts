@@ -1,5 +1,5 @@
-import { supabase } from '../../lib/supabase';
 import type { IATextAnalysisSuggestion } from './types';
+import { invokeAIFunction } from './invoke';
 
 export type AnalyzeTextPayload = {
   text: string;
@@ -29,23 +29,11 @@ function isValidResponse(value: unknown): value is AnalyzeTextResponse {
 }
 
 export async function analyzeTextWithAI(payload: AnalyzeTextPayload): Promise<AnalyzeTextResponse | null> {
-  const invokePromise = supabase.functions.invoke<AnalyzeTextResponse>('ia-analyze-text', {
-    body: payload,
-  });
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    window.setTimeout(() => reject(new Error('timeout')), ANALYZE_TEXT_TIMEOUT_MS);
-  });
-
-  let data: AnalyzeTextResponse | null = null;
-  let error: unknown = null;
-
-  try {
-    const result = await Promise.race([invokePromise, timeoutPromise]);
-    data = result.data ?? null;
-    error = result.error;
-  } catch {
-    return null;
-  }
+  const { data, error } = await invokeAIFunction<AnalyzeTextResponse>(
+    'ia-analyze-text',
+    payload,
+    ANALYZE_TEXT_TIMEOUT_MS,
+  );
 
   if (error || !isValidResponse(data)) {
     return null;
