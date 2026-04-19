@@ -1,11 +1,12 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useDataStore } from '../../store';
+import { useAuthStore, useDataStore } from '../../store';
 import { IAChatDrawer } from './IAChatDrawer';
 import { IAContextBuilder } from './IAContextBuilder';
 import { IAReportDrawer } from './IAReportDrawer';
-import type { IAActionDescriptor, IAContextValue, IAChatMessage, IATextAnalysisResult } from './types';
+import { analyzeTextWithAI } from './analyzeText';
+import type { IAActionDescriptor, IAContextValue, IAChatMessage, IATextAnalysisResult, IATextAnalysisSuggestion } from './types';
 
 export const IAContext = createContext<IAContextValue | null>(null);
 
@@ -19,29 +20,36 @@ function buildMockReply(area: string, message: string): string {
   return `Mock de IA: para "${message}", eu revisaria metas, projetos e protecoes do portfolio antes de qualquer ajuste maior.`;
 }
 
-function buildMockAnalysis(text: string, sourceLabel: string): IATextAnalysisResult {
-  const hasChecklist = /- |\* |\d+\./.test(text);
-  const hasPlanningWords = /meta|projeto|habito|agenda|dia/i.test(text);
+function removeAnalysisEntry(
+  current: Record<string, IATextAnalysisResult | undefined>,
+  sourceId: string,
+): Record<string, IATextAnalysisResult | undefined> {
+  const next = { ...current };
+  delete next[sourceId];
+  return next;
+}
+
+function keepRemainingSuggestions(
+  current: Record<string, IATextAnalysisResult | undefined>,
+  sourceId: string,
+  remaining: IATextAnalysisSuggestion[],
+): Record<string, IATextAnalysisResult | undefined> {
+  if (remaining.length === 0) {
+    return removeAnalysisEntry(current, sourceId);
+  }
 
   return {
-    title: `Leitura mockada de ${sourceLabel}`,
-    summary:
-      text.length < 40
-        ? 'Texto curto: a IA sugere complementar contexto antes de transformar isso em acao.'
-        : 'Texto com material suficiente para classificar, vincular ou promover para acao.',
-    highlights: [
-      hasChecklist ? 'Ha estrutura de lista que pode virar acao ou checklist.' : 'Nao ha checklist explicito; parece mais uma nota livre.',
-      hasPlanningWords ? 'O conteudo conversa com planejamento e execucao.' : 'O conteudo parece mais descritivo do que operacional.',
-      `${Math.max(1, text.split(/\s+/).filter(Boolean).length)} palavras consideradas na analise mockada.`,
-    ],
-    actions: hasChecklist ? ['Criar', 'Ajustar', 'Vincular'] : ['Organizar', 'Vincular'],
+    ...current,
+    [sourceId]: { suggestions: remaining },
   };
 }
 
 export function IAProvider({ children }: PropsWithChildren) {
   const location = useLocation();
+  const session = useAuthStore((state) => state.session);
   const items = useDataStore((state) => state.items);
   const inbox = useDataStore((state) => state.inbox);
+  const addItem = useDataStore((state) => state.addItem);
   const [chatOpen, setChatOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [draftMessage, setDraftMessage] = useState('');
@@ -72,7 +80,7 @@ export function IAProvider({ children }: PropsWithChildren) {
           sendMessage: () => {
             if (!draftMessage.trim()) return;
 
-            // TODO: CLAUDE — conectar com Edge Function ia-chat
+            // TODO: CLAUDE â€” conectar com Edge Function ia-chat
             // Input esperado: { pathname, contextKey, message, visibleContext }
             // Output esperado: { reply, suggestedActions, reportHints }
             const userMessage: IAChatMessage = {
@@ -92,19 +100,71 @@ export function IAProvider({ children }: PropsWithChildren) {
             setDraftMessage('');
           },
           triggerAction: (action: IAActionDescriptor) => {
-            // TODO: CLAUDE — conectar com Edge Function ia-actions
+            // TODO: CLAUDE â€” conectar com Edge Function ia-actions
             // Input esperado: { pathname, actionId, intent, contextKey }
             // Output esperado: { applied: boolean, summary: string }
             setCompletedActions((current) => ({ ...current, [action.id]: true }));
           },
-          analyzeText: (sourceId: string, sourceLabel: string, text: string) => {
-            // TODO: CLAUDE — conectar com Edge Function ia-analyze-text
-            // Input esperado: { sourceId, sourceLabel, text, pathname }
-            // Output esperado: { summary, highlights, actions }
+          analyzeText: async (sourceId: string, _sourceLabel: string, text: string) => {
+            const normalizedText = text.trim();
+            setAnalysisResults((current) => removeAnalysisEntry(current, sourceId));
+
+            if (!normalizedText) {
+              return;
+            }
+
+            // TODO: CLAUDE â€” conectar com Edge Function ia-analyze-text
+            // Input esperado: { text }
+            // Output esperado: { suggestions: [{ type, title, confidence }] }
+            const result = await analyzeTextWithAI({ text: normalizedText });
+            if (!result || result.suggestions.length === 0) {
+              return;
+            }
+
             setAnalysisResults((current) => ({
               ...current,
-              [sourceId]: buildMockAnalysis(text, sourceLabel),
+              [sourceId]: {
+                suggestions: result.suggestions,
+              },
             }));
+          },
+          createFromAnalysis: async (sourceId, suggestion) => {
+            const userId = session?.user?.id;
+            if (!userId) return;
+
+            const created = await addItem({
+              user_id: userId,
+              type: suggestion.type,
+              title: suggestion.title,
+              description: null,
+              status: 'active',
+              priority: null,
+              due_date: null,
+              completed_at: null,
+              goal_id: null,
+              project_id: null,
+              tags: [],
+              reschedule_count: 0,
+              metadata: {},
+              image_url: null,
+            });
+
+            if (!created) return;
+
+            setAnalysisResults((current) => {
+              const currentSuggestions = current[sourceId]?.suggestions ?? [];
+              const remaining = currentSuggestions.filter(
+                (entry) => !(entry.type === suggestion.type && entry.title === suggestion.title),
+              );
+              return keepRemainingSuggestions(current, sourceId, remaining);
+            });
+          },
+          ignoreAnalysisSuggestion: (sourceId, suggestionTitle) => {
+            setAnalysisResults((current) => {
+              const currentSuggestions = current[sourceId]?.suggestions ?? [];
+              const remaining = currentSuggestions.filter((entry) => entry.title !== suggestionTitle);
+              return keepRemainingSuggestions(current, sourceId, remaining);
+            });
           },
         };
 

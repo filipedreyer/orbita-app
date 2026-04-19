@@ -8,7 +8,14 @@ import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
 import { IAActionButton } from '../../ia/IAActionButton';
 import { IASuggestion } from '../../ia/IASuggestion';
 import { useIA } from '../../ia/useIA';
-import { buildTodayReadPayload, readTodayWithAI, type TodayReadCapacity } from '../../ia/readToday';
+import {
+  READ_TODAY_TIMEOUT_MS,
+  ReadTodayError,
+  buildTodayReadPayload,
+  readTodayWithAI,
+  type TodayReadCapacity,
+  type TodayReadStatus,
+} from '../../ia/readToday';
 import { today } from '../../../lib/dates';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
@@ -37,8 +44,8 @@ export function HojePage() {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [todayReadingOpen, setTodayReadingOpen] = useState(false);
   const [todayReading, setTodayReading] = useState('');
-  const [todayReadingLoading, setTodayReadingLoading] = useState(false);
-  const [todayReadingError, setTodayReadingError] = useState('');
+  const [todayReadingStatus, setTodayReadingStatus] = useState<TodayReadStatus>('idle');
+  const [todayReadingMessage, setTodayReadingMessage] = useState('');
   const { routeContext, completedActions, triggerAction } = useIA();
   const { showFeedback } = useActionFeedback();
   const referenceDate = today();
@@ -199,8 +206,9 @@ export function HojePage() {
 
   async function handleReadToday() {
     setTodayReadingOpen(true);
-    setTodayReadingLoading(true);
-    setTodayReadingError('');
+    setTodayReading('');
+    setTodayReadingStatus('loading');
+    setTodayReadingMessage(`Lendo o dia... Se passar de ${Math.round(READ_TODAY_TIMEOUT_MS / 1000)}s, a leitura entra em timeout.`);
 
     try {
       const payload = buildTodayReadPayload({
@@ -214,11 +222,18 @@ export function HojePage() {
       });
       const reading = await readTodayWithAI(payload);
       setTodayReading(reading);
+      setTodayReadingStatus('success');
+      setTodayReadingMessage('');
     } catch (error) {
       setTodayReading('');
-      setTodayReadingError(error instanceof Error ? error.message : 'Nao foi possivel ler o dia agora.');
-    } finally {
-      setTodayReadingLoading(false);
+      if (error instanceof ReadTodayError) {
+        setTodayReadingStatus(error.code);
+        setTodayReadingMessage(error.message);
+        return;
+      }
+
+      setTodayReadingStatus('failure');
+      setTodayReadingMessage('Leitura indisponivel agora. Siga com o dia e tente novamente depois.');
     }
   }
 
@@ -350,10 +365,18 @@ export function HojePage() {
             </div>
 
             <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-4 text-sm leading-6 text-[var(--text)]">
-              {todayReadingLoading ? 'Lendo o dia...' : todayReadingError ? todayReadingError : todayReading}
+              {todayReadingStatus === 'loading' ? todayReadingMessage : null}
+              {todayReadingStatus === 'success' ? todayReading : null}
+              {todayReadingStatus === 'empty' || todayReadingStatus === 'timeout' || todayReadingStatus === 'failure' ? todayReadingMessage : null}
+              {todayReadingStatus === 'idle' ? 'Uma leitura curta do estado atual de Hoje aparecera aqui.' : null}
             </div>
 
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {todayReadingStatus === 'empty' || todayReadingStatus === 'timeout' || todayReadingStatus === 'failure' ? (
+                <Button variant="secondary" onClick={handleReadToday}>
+                  Tentar novamente
+                </Button>
+              ) : null}
               <Button variant="ghost" onClick={() => setTodayReadingOpen(false)}>
                 Fechar
               </Button>

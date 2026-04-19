@@ -1,12 +1,13 @@
-import { CheckCheck, Clock3, FileImage, FilePlus2, FileText, Inbox, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCheck, Clock3, FileImage, FilePlus2, FileText, Inbox, Sparkles, Trash2 } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
-import { Button, Card, Field, Input, PillSelector } from '../../components/ui';
+import { Badge, Button, Card, Field, Input, PillSelector } from '../../components/ui';
 import { resolveInboxAttachment } from '../../lib/inbox-attachments';
 import type { EntityType, InboxItem } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
 import { extractTags } from '../../utils/helpers';
 import { structuredCaptureTypeOptions } from '../capture/capture-types';
+import { buildInboxClassificationPayload, classifyInboxWithAI, type InboxClassificationSuggestion } from '../ia/classifyInbox';
 
 const inboxTypeOptions = structuredCaptureTypeOptions.map((option) => ({
   key: option.type,
@@ -16,6 +17,7 @@ const inboxTypeOptions = structuredCaptureTypeOptions.map((option) => ({
 export function InboxPage() {
   const session = useAuthStore((state) => state.session);
   const inbox = useDataStore((state) => state.inbox);
+  const items = useDataStore((state) => state.items);
   const addItem = useDataStore((state) => state.addItem);
   const dismissInbox = useDataStore((state) => state.dismissInbox);
   const updateInboxItem = useDataStore((state) => state.updateInboxItem);
@@ -24,6 +26,10 @@ export function InboxPage() {
   const [draftName, setDraftName] = useState('');
   const [draftType, setDraftType] = useState<EntityType | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [classificationLoading, setClassificationLoading] = useState(false);
+  const [classificationSuggestion, setClassificationSuggestion] = useState<InboxClassificationSuggestion | null>(null);
+  const [suggestionTypeApplied, setSuggestionTypeApplied] = useState(false);
+  const processingIdRef = useRef<string | null>(null);
 
   function getInboxTextLabel(item: InboxItem) {
     return item.text.trim() ? item.text : 'Sem texto';
@@ -31,15 +37,55 @@ export function InboxPage() {
 
   function resetProcessor() {
     setProcessingId(null);
+    processingIdRef.current = null;
     setDraftName('');
     setDraftType(null);
     setSubmitting(false);
+    setClassificationLoading(false);
+    setClassificationSuggestion(null);
+    setSuggestionTypeApplied(false);
   }
 
-  function beginProcessing(item: InboxItem) {
+  async function beginProcessing(item: InboxItem) {
     setProcessingId(item.id);
+    processingIdRef.current = item.id;
     setDraftName(item.text);
     setDraftType(item.ai_suggested_type);
+    setClassificationSuggestion(null);
+    setSuggestionTypeApplied(false);
+    setClassificationLoading(true);
+
+    const knownProjects = items
+      .filter((entry) => entry.type === 'projeto' && entry.status !== 'archived')
+      .map((entry) => entry.title);
+    const knownGoals = items
+      .filter((entry) => entry.type === 'meta' && entry.status !== 'archived')
+      .map((entry) => entry.title);
+
+    const suggestion = await classifyInboxWithAI(
+      buildInboxClassificationPayload({
+        text: item.text,
+        knownProjects,
+        knownGoals,
+      }),
+    );
+
+    setClassificationLoading(false);
+
+    if (processingIdRef.current !== item.id) {
+      return;
+    }
+
+    if (!suggestion) {
+      return;
+    }
+
+    setClassificationSuggestion(suggestion);
+
+    if (!item.ai_suggested_type) {
+      setDraftType(suggestion.suggestedType);
+      setSuggestionTypeApplied(true);
+    }
   }
 
   function getMinimalMetadata(type: EntityType) {
@@ -222,8 +268,53 @@ export function InboxPage() {
                 </Field>
 
                 <Field label="Tipo">
-                  <PillSelector options={inboxTypeOptions} selected={draftType} onSelect={(key) => setDraftType((key as EntityType | null) ?? null)} />
+                  <PillSelector
+                    options={inboxTypeOptions}
+                    selected={draftType}
+                    onSelect={(key) => {
+                      setDraftType((key as EntityType | null) ?? null);
+                      setSuggestionTypeApplied(false);
+                    }}
+                  />
                 </Field>
+
+                {classificationLoading ? (
+                  <div className="rounded-[var(--radius-2xl)] border border-[var(--accent-border)] bg-[var(--accent-soft)]/60 px-4 py-3 text-sm text-[var(--text-secondary)]">
+                    Lendo sugestao de classificacao...
+                  </div>
+                ) : null}
+
+                {classificationSuggestion ? (
+                  <div className="space-y-3 rounded-[var(--radius-2xl)] border border-[var(--accent-border)] bg-[var(--accent-soft)]/50 px-4 py-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge label="Sugestao IA" color="var(--accent)" bgColor="var(--accent-soft)" />
+                      <span className="text-xs font-medium text-[var(--text-secondary)]">
+                        {classificationSuggestion.confidence === 'high'
+                          ? 'Confianca alta'
+                          : classificationSuggestion.confidence === 'medium'
+                            ? 'Confianca media'
+                            : 'Confianca baixa'}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+                      <p>
+                        Tipo sugerido:{' '}
+                        <span className="font-semibold text-[var(--text)]">{classificationSuggestion.suggestedType}</span>
+                        {suggestionTypeApplied ? ' · pre-preenchido como sugestao' : ''}
+                      </p>
+                      <p>
+                        Vinculo sugerido:{' '}
+                        <span className="font-semibold text-[var(--text)]">
+                          {classificationSuggestion.suggestedLink.kind === 'none'
+                            ? 'nenhum'
+                            : `${classificationSuggestion.suggestedLink.kind} · ${classificationSuggestion.suggestedLink.label}`}
+                        </span>
+                      </p>
+                      <p>{classificationSuggestion.reason}</p>
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
                   Para sair da inbox, o item precisa de <span className="font-semibold text-[var(--text)]">tipo</span> e <span className="font-semibold text-[var(--text)]">nome</span>. Data continua opcional.
@@ -268,6 +359,10 @@ export function InboxPage() {
                   <span className="rounded-[var(--radius-pill)] border border-[var(--border)] bg-[var(--surface-alt)] px-2.5 py-1">
                     {item.ai_suggested_type ? `Tipo: ${item.ai_suggested_type}` : 'Sem classificacao'}
                   </span>
+                  <span className="inline-flex items-center gap-1 rounded-[var(--radius-pill)] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-2.5 py-1 text-[var(--accent)]">
+                    <Sparkles className="h-3 w-3" />
+                    Sugestao assistida ao processar
+                  </span>
                 </div>
                 {(() => {
                   const attachment = resolveInboxAttachment(item);
@@ -283,7 +378,7 @@ export function InboxPage() {
             )}
 
             <div className="flex flex-wrap gap-2 border-t border-[var(--border)] pt-4">
-              <Button variant="secondary" onClick={() => beginProcessing(item)}>
+              <Button variant="secondary" onClick={() => void beginProcessing(item)}>
                 <FilePlus2 className="h-4 w-4" />
                 Processar
               </Button>

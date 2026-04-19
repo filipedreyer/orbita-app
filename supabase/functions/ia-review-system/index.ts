@@ -3,66 +3,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `You are a sharp, concise operator reading the current state of a workday.
-You are not a planner.
-You are not an executor.
-You are a reader.
+const SYSTEM_PROMPT = `You are reading the system, not the day.
 
 Your task:
-1. Identify the dominant conflict of the day, not just its label.
-2. Explain the mismatch behind that conflict:
-   - now versus later
-   - direction-linked execution versus standalone execution
-   - visible risk versus what is receiving immediate focus
-3. Name the main problem clearly.
-4. Add one or two concise observations that explain why it matters.
-5. Suggest what to remove or what to prioritize.
-
-Interpretive rules:
-- Do not merely restate "overloaded", "balanced", "unfocused", or "ignoring risk".
-- If you use one of those labels, explain the composition problem behind it.
-- Prefer diagnosing tension and mismatch over summarizing counts.
-- Use the summary fields to compare zones before answering.
+1. Identify the dominant systemic problem
+2. Explain the pattern behind it
+3. Highlight what is accumulating or being neglected
 
 Rules:
-- Maximum 4 to 5 lines total.
-- No markdown.
-- No bullet points.
-- No emojis.
-- No motivational tone.
-- No generic advice.
-- Stay concrete and tied to the provided data only.`;
+- maximum 5 lines
+- no markdown
+- no bullet points
+- no motivational tone
+- no generic advice
+- do not suggest specific actions
+- stay at system level`;
 
-type TodayItemInput = {
-  title: string;
-  type: string;
-  status: string;
-  due_date: string | null;
-  linkage: {
-    kind: 'goal' | 'project' | 'none';
-    label: string | null;
+type ReviewSystemInput = {
+  execution: {
+    activeCount: number;
+    completedRecent: number;
+    standaloneCount: number;
+    linkedCount: number;
   };
-};
-
-type TodayReadInput = {
-  agora: TodayItemInput[];
-  cabe: TodayItemInput[];
-  atencao: TodayItemInput[];
-  capacity: 'balanced' | 'loaded' | 'overloaded';
-  directionSummary: {
-    linked: number;
-    standalone: number;
+  risk: {
+    overdueCount: number;
+    staleCount: number;
+    postponedCount: number;
   };
-  summary: {
-    agoraCount: number;
-    cabeCount: number;
-    atencaoCount: number;
-    dueTodayInAgora: number;
-    linkedInAgora: number;
-    standaloneInAgora: number;
-    highPriorityStandaloneInAgora: number;
-    overdueInAtencao: number;
-    revisitInAtencao: number;
+  direction: {
+    goalsWithoutExecution: number;
+    projectsWithoutSteps: number;
+    habitsNotReflected: number;
   };
 };
 
@@ -96,7 +68,7 @@ function extractTextFromResponse(payload: Record<string, unknown>) {
   return fragments.join('\n').trim();
 }
 
-async function callOpenAI(input: TodayReadInput, apiKey: string, model: string) {
+async function callOpenAI(input: ReviewSystemInput, apiKey: string, model: string) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 12000);
 
@@ -146,9 +118,9 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: 'OPENAI_API_KEY is not configured.' }, 500);
   }
 
-  let input: TodayReadInput;
+  let input: ReviewSystemInput;
   try {
-    input = (await request.json()) as TodayReadInput;
+    input = (await request.json()) as ReviewSystemInput;
   } catch {
     return jsonResponse({ error: 'Invalid JSON payload.' }, 400);
   }

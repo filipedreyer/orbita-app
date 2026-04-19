@@ -1,7 +1,9 @@
-import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'lucide-react';
+import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Card, ProgressBar } from '../../components/ui';
 import { routes } from '../../app/routes';
+import { readSystemReviewWithAI } from '../ia/reviewSystem';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
 import { useHojeDomain } from '../../store/fazer';
@@ -18,6 +20,7 @@ export function RevisaoSemanalPage() {
   const items = useDataStore((state) => state.items);
   const portfolio = usePlanejarPortfolio();
   const hojeDomain = useHojeDomain();
+  const [systemReading, setSystemReading] = useState<string | null>(null);
   const completionRatio =
     portfolio.weeklyReview.projectsCount > 0
       ? Math.min(100, Math.round((portfolio.weeklyReview.completedThisWeek / portfolio.weeklyReview.projectsCount) * 100))
@@ -73,6 +76,54 @@ export function RevisaoSemanalPage() {
     ...longInactiveItems,
   ].filter((item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index);
 
+  const reviewPayload = useMemo(() => ({
+    execution: {
+      activeCount: activeHojeItems.length,
+      completedRecent: portfolio.weeklyReview.completedThisWeek,
+      standaloneCount: standaloneExecution.length,
+      linkedCount: directionLinkedExecution.length,
+    },
+    risk: {
+      overdueCount: hojeDomain.overdueItems.length,
+      staleCount: longInactiveItems.length,
+      postponedCount: postponedNeedingRevisit.length,
+    },
+    direction: {
+      goalsWithoutExecution: goalsWithoutExecution.length,
+      projectsWithoutSteps: projectsWithoutExecution.length,
+      habitsNotReflected: habitsWithoutExecution.length,
+    },
+  }), [
+    activeHojeItems.length,
+    directionLinkedExecution.length,
+    goalsWithoutExecution.length,
+    habitsWithoutExecution.length,
+    hojeDomain.overdueItems.length,
+    longInactiveItems.length,
+    portfolio.weeklyReview.completedThisWeek,
+    postponedNeedingRevisit.length,
+    projectsWithoutExecution.length,
+    standaloneExecution.length,
+  ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setSystemReading(null);
+
+    async function loadSystemReading() {
+      const reading = await readSystemReviewWithAI(reviewPayload);
+      if (!cancelled && reading) {
+        setSystemReading(reading);
+      }
+    }
+
+    void loadSystemReading();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reviewPayload]);
+
   function renderSimpleList(sectionItems: Item[], emptyLabel: string) {
     if (sectionItems.length === 0) {
       return <p className="text-sm text-[var(--text-secondary)]">{emptyLabel}</p>;
@@ -108,6 +159,20 @@ export function RevisaoSemanalPage() {
           </div>
         </div>
       </Card>
+
+      {systemReading ? (
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent)]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Leitura sistêmica de IA</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{systemReading}</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card className="space-y-2 p-4">

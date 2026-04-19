@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Sparkles } from 'lucide-react';
-import { Button, Card } from '../../components/ui';
+import { Badge, Button, Card } from '../../components/ui';
 import { useIA } from './useIA';
 
 export function IATextAnalyzer({
@@ -12,33 +12,54 @@ export function IATextAnalyzer({
   sourceLabel: string;
   text: string;
 }) {
-  const { analyzeText, analysisResults } = useIA();
+  const { analyzeText, analysisResults, createFromAnalysis, ignoreAnalysisSuggestion } = useIA();
   const analysis = analysisResults[sourceId];
   const plainText = useMemo(() => text.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(), [text]);
 
+  const confidenceLabel: Record<'low' | 'medium' | 'high', string> = {
+    low: 'Baixa',
+    medium: 'Media',
+    high: 'Alta',
+  };
+
+  const typeColor: Record<'tarefa' | 'lembrete' | 'ideia', string> = {
+    tarefa: 'var(--accent-purple)',
+    lembrete: 'var(--accent-amber)',
+    ideia: 'var(--accent-teal)',
+  };
+
   return (
     <div className="space-y-3">
-      <Button variant="secondary" onClick={() => analyzeText(sourceId, sourceLabel, plainText)}>
+      <Button variant="secondary" onClick={() => void analyzeText(sourceId, sourceLabel, plainText)} disabled={!plainText}>
         <Sparkles className="h-4 w-4" />
-        Analisar com IA
+        Analisar
       </Button>
 
-      {analysis ? (
+      {analysis?.suggestions.length ? (
         <Card className="space-y-3 p-4">
-          <p className="text-sm font-semibold text-[var(--text)]">{analysis.title}</p>
-          <p className="text-sm text-[var(--text-secondary)]">{analysis.summary}</p>
-          <div className="space-y-2">
-            {analysis.highlights.map((highlight) => (
-              <div key={highlight} className="rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
-                {highlight}
+          <p className="text-sm font-semibold text-[var(--text)]">Sugestoes extraidas</p>
+          <div className="space-y-3">
+            {analysis.suggestions.map((suggestion) => (
+              <div
+                key={`${suggestion.type}:${suggestion.title}`}
+                className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-alt)] p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge label={suggestion.type} color={typeColor[suggestion.type]} />
+                  <span className="text-xs font-medium uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+                    Confianca {confidenceLabel[suggestion.confidence]}
+                  </span>
+                </div>
+                <p className="text-sm font-medium text-[var(--text)]">{suggestion.title}</p>
+                <div className="flex gap-2">
+                  <Button className="flex-1" onClick={() => void createFromAnalysis(sourceId, suggestion)}>
+                    Criar
+                  </Button>
+                  <Button className="flex-1" variant="ghost" onClick={() => ignoreAnalysisSuggestion(sourceId, suggestion.title)}>
+                    Ignorar
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {analysis.actions.map((item) => (
-              <span key={item} className="rounded-full bg-[var(--teal-light)] px-3 py-1 text-xs font-semibold text-[var(--teal)]">
-                {item}
-              </span>
             ))}
           </div>
         </Card>

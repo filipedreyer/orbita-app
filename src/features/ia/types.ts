@@ -35,11 +35,14 @@ export interface IAOnboardingStep {
   done: boolean;
 }
 
-export interface IATextAnalysisResult {
+export interface IATextAnalysisSuggestion {
+  type: 'tarefa' | 'lembrete' | 'ideia';
   title: string;
-  summary: string;
-  highlights: string[];
-  actions: string[];
+  confidence: 'low' | 'medium' | 'high';
+}
+
+export interface IATextAnalysisResult {
+  suggestions: IATextAnalysisSuggestion[];
 }
 
 export interface IARouteContext {
@@ -69,5 +72,7 @@ export interface IAContextValue {
   closeReports: () => void;
   sendMessage: () => void;
   triggerAction: (action: IAActionDescriptor) => void;
-  analyzeText: (sourceId: string, sourceLabel: string, text: string) => void;
+  analyzeText: (sourceId: string, sourceLabel: string, text: string) => Promise<void>;
+  createFromAnalysis: (sourceId: string, suggestion: IATextAnalysisSuggestion) => Promise<void>;
+  ignoreAnalysisSuggestion: (sourceId: string, suggestionTitle: string) => void;
 }
