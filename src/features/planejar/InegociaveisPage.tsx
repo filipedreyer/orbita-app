@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Badge, Button, Card } from '../../components/ui';
 import type { InegociavelMetadata, Item } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
+import { useHojeDomain } from '../../store/fazer';
 import { usePlanejarPortfolio } from '../../store/planejar';
 import { EntitySheetWrapper } from '../entity/EntitySheetWrapper';
 import { PlanningItemEditorPanel, type PlanningEditorValues } from './PlanningItemEditorPanel';
@@ -27,6 +28,7 @@ export function InegociaveisPage() {
   const addItem = useDataStore((state) => state.addItem);
   const updateItem = useDataStore((state) => state.updateItem);
   const portfolio = usePlanejarPortfolio();
+  const hojeDomain = useHojeDomain();
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [creating, setCreating] = useState(false);
@@ -43,10 +45,13 @@ export function InegociaveisPage() {
           metadata,
           label: formatRuleLabel(metadata),
           hoursPerDay: typeof metadata.horas_por_dia === 'number' ? metadata.horas_por_dia : null,
+          isFixedToday: hojeDomain.fixedInegociaveis.some((entry: Item) => entry.id === item.id),
+          isCapacityOnlyToday: hojeDomain.capacityOnlyInegociaveis.some((entry: Item) => entry.id === item.id),
         };
       }),
-    [portfolio.inegociaveis],
+    [hojeDomain.capacityOnlyInegociaveis, hojeDomain.fixedInegociaveis, portfolio.inegociaveis],
   );
+  const inegociaveisWithoutReflectionCount = cards.filter((card) => !card.isFixedToday && !card.isCapacityOnlyToday).length;
 
   async function handleSave(values: PlanningEditorValues) {
     if (!session?.user) return;
@@ -102,8 +107,15 @@ export function InegociaveisPage() {
         </div>
       </Card>
 
+      {inegociaveisWithoutReflectionCount > 0 ? (
+        <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">{inegociaveisWithoutReflectionCount} inegociáveis sem reflexo claro no dia</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">As restrições existem em Planejar, mas parte delas ainda não se torna perceptível na leitura operacional de Hoje.</p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4">
-        {cards.map(({ item, metadata, label, hoursPerDay }) => (
+        {cards.map(({ item, metadata, label, hoursPerDay, isFixedToday, isCapacityOnlyToday }) => (
           <Card key={item.id} className="space-y-4 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -131,6 +143,19 @@ export function InegociaveisPage() {
                   {metadata.horario_inicio && metadata.horario_fim ? `${metadata.horario_inicio} - ${metadata.horario_fim}` : 'Sem horario fixo'}
                 </p>
               </div>
+            </div>
+
+            <div className={`rounded-2xl border px-4 py-3 text-sm ${isFixedToday || isCapacityOnlyToday ? 'border-[var(--accent-border)] bg-[var(--surface)] text-[var(--text-secondary)]' : 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'}`}>
+              <p className="font-semibold">
+                {isFixedToday ? 'Reflexo operacional claro' : isCapacityOnlyToday ? 'Reflexo parcial no dia' : 'Sem reflexo visível no dia'}
+              </p>
+              <p className="mt-1">
+                {isFixedToday
+                  ? 'Este inegociável já aparece na lógica do dia como bloco operacional.'
+                  : isCapacityOnlyToday
+                    ? 'Este inegociável impacta a capacidade do dia, mas ainda sem bloco operacional claro.'
+                    : 'Gap de execução: existe no portfólio, mas não está evidente na leitura atual de Hoje.'}
+              </p>
             </div>
 
             <div className="flex gap-2">

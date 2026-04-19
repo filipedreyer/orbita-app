@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BottomSheet, Button, Input } from '../../components/ui';
+import { BottomSheet, Button, Input, Textarea } from '../../components/ui';
 import type { GoalDirection, Item, PriorityLevel } from '../../lib/types';
 
 type PlanningEditorMode = 'meta' | 'projeto' | 'habito' | 'inegociavel';
@@ -78,10 +78,10 @@ export function PlanningItemEditorPanel({
 
         <label className="block space-y-2">
           <span className="text-sm font-semibold text-[var(--text)]">Descrição</span>
-          <textarea
+          <Textarea
             value={values.description}
             onChange={(event) => setValues((current) => ({ ...current, description: event.target.value }))}
-            className="min-h-28 w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-sm text-[var(--text)]"
+            className="min-h-28 bg-[var(--surface)]"
           />
         </label>
 

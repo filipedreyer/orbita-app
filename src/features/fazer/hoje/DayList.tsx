@@ -9,33 +9,42 @@ export function DayList({
   items,
   onOpen,
   onComplete,
+  getExecutionState,
 }: {
   items: Item[];
   onOpen: (item: Item) => void;
   onComplete: (item: Item) => void;
+  getExecutionState?: (item: Item) => { context: string | null; linked: boolean };
 }) {
   if (items.length === 0) {
     return (
-      <Card>
-        <p className="text-sm text-[var(--text-secondary)]">Nenhum item ativo para hoje.</p>
+      <Card className="space-y-2 p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Lista do dia</p>
+        <p className="text-sm leading-6 text-[var(--text-secondary)]">Nenhum item ativo para hoje.</p>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden p-0">
       {items.map((item, index) => (
         item.type === 'inegociavel' ? (
           <CardRow key={item.id} isLast={index === items.length - 1} onPress={() => onOpen(item)}>
-            <div className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--teal-light)] text-[10px] font-bold text-[var(--teal)]">
+            <div className="inline-flex h-7 w-7 items-center justify-center rounded-[var(--radius-pill)] bg-[var(--accent-soft)] text-[10px] font-bold text-[var(--accent)]">
               F
             </div>
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-                <Badge label="Bloco fixo" color="var(--teal)" bgColor="rgba(22, 163, 74, 0.12)" />
+                <Badge label="Bloco fixo" color="var(--accent)" bgColor="color-mix(in srgb, var(--accent) 14%, transparent)" />
+                <Badge
+                  label={getExecutionState?.(item)?.linked ? 'Direção visível' : 'Execução solta'}
+                  color={getExecutionState?.(item)?.linked ? 'var(--accent)' : 'var(--warning)'}
+                  bgColor={getExecutionState?.(item)?.linked ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'color-mix(in srgb, var(--warning) 16%, transparent)'}
+                />
               </div>
-              <p className="text-xs text-[var(--text-secondary)]">inegociavel</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">inegociavel</p>
+              {getExecutionState?.(item)?.context ? <p className="mt-2 text-xs text-[var(--text-secondary)]">{getExecutionState(item)?.context}</p> : null}
             </div>
           </CardRow>
         ) : (
@@ -44,9 +53,15 @@ export function DayList({
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-                {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" color="var(--teal)" bgColor="rgba(22, 163, 74, 0.12)" /> : null}
+                {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" color="var(--accent)" bgColor="color-mix(in srgb, var(--accent) 14%, transparent)" /> : null}
+                <Badge
+                  label={getExecutionState?.(item)?.linked ? 'Direção visível' : 'Execução solta'}
+                  color={getExecutionState?.(item)?.linked ? 'var(--accent)' : 'var(--warning)'}
+                  bgColor={getExecutionState?.(item)?.linked ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'color-mix(in srgb, var(--warning) 16%, transparent)'}
+                />
               </div>
-              <p className="text-xs text-[var(--text-secondary)]">{item.type}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+              {getExecutionState?.(item)?.context ? <p className="mt-2 text-xs text-[var(--text-secondary)]">{getExecutionState(item)?.context}</p> : null}
             </div>
           </CardRow>
         )

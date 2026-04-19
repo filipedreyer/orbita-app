@@ -1,19 +1,5 @@
 import { supabase } from '../lib/supabase';
-
-export interface RitualOrderSettings {
-  date: string;
-  ids: string[];
-}
-
-export interface ProfileSettingsRecord {
-  homeScreen?: 'today';
-  theme?: 'auto' | 'light' | 'dark';
-  silenceStart?: string;
-  silenceEnd?: string;
-  weeklyReportDay?: string;
-  ritualOrder?: RitualOrderSettings | null;
-  [key: string]: unknown;
-}
+import type { ProfileSettingsRecord } from '../lib/types';
 
 export async function fetchProfileSettings(userId: string): Promise<ProfileSettingsRecord> {
   const { data, error } = await supabase.from('profiles').select('settings').eq('id', userId).single();

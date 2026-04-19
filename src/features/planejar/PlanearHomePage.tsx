@@ -18,7 +18,7 @@ export function PlanearHomePage() {
   const { routeContext } = useIA();
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Planejar</p>
@@ -54,10 +54,14 @@ export function PlanearHomePage() {
         {cards.map((card) => (
           <NavLink key={card.path} to={card.path}>
             {({ isActive }) => (
-              <Card className={`space-y-3 p-4 transition ${isActive ? 'border-[var(--teal)] bg-[var(--teal-light)]' : ''}`}>
-                <card.icon className="h-5 w-5 text-[var(--teal)]" />
-                <p className="text-lg font-semibold">{card.label}</p>
-                <p className="text-sm text-[var(--text-secondary)]">{card.description}</p>
+              <Card className={`space-y-4 p-5 transition ${isActive ? 'border-[var(--accent)] bg-[var(--accent-soft)]' : 'hover:border-[var(--border-strong)]'}`}>
+                <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--surface)] text-[var(--accent)] shadow-[var(--shadow-card)]">
+                  <card.icon className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-[var(--text)]">{card.label}</p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{card.description}</p>
+                </div>
               </Card>
             )}
           </NavLink>

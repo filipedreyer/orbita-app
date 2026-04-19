@@ -32,6 +32,7 @@ export function ProjetosPage() {
       }),
     [portfolio.goals, portfolio.projects, portfolio.tasksByProject],
   );
+  const projectsWithoutExecutionCount = cards.filter((card) => card.tasks.length === 0).length;
 
   async function handleSave(values: PlanningEditorValues) {
     if (!session?.user) return;
@@ -79,6 +80,13 @@ export function ProjetosPage() {
         </div>
       </Card>
 
+      {projectsWithoutExecutionCount > 0 ? (
+        <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">{projectsWithoutExecutionCount} projetos sem próximos passos ativos</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Há direção organizada no portfólio, mas parte dela ainda não virou execução concreta.</p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4">
         {cards.map(({ project, linkedGoal, tasks, progress }) => (
           <Card key={project.id} className="space-y-4 p-4">
@@ -98,6 +106,15 @@ export function ProjetosPage() {
               </div>
               <ProgressBar value={progress} />
               <p className="text-xs text-[var(--text-tertiary)]">{tasks.length} tarefas associadas</p>
+            </div>
+
+            <div className={`rounded-2xl border px-4 py-3 text-sm ${tasks.length > 0 ? 'border-[var(--accent-border)] bg-[var(--surface)] text-[var(--text-secondary)]' : 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'}`}>
+              <p className="font-semibold">{tasks.length} passos ativos ligados</p>
+              <p className="mt-1">
+                {tasks.length > 0
+                  ? 'Este projeto já tem próximos passos em execução.'
+                  : 'Gap de execução: o projeto existe, mas ainda não ganhou tração em Fazer.'}
+              </p>
             </div>
 
             <div className="flex gap-2">

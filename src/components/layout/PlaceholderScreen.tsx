@@ -31,7 +31,7 @@ export function PlaceholderScreen({
       <div className="grid gap-4 md:grid-cols-3">
         {actions.map(({ label, icon: Icon, variant = 'primary' }) => (
           <Card key={label} className="space-y-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[var(--teal-light)] text-[var(--teal)]">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] text-[var(--accent)]">
               <Icon className="h-5 w-5" />
             </div>
             <div>

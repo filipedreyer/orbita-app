@@ -10,9 +10,9 @@ export function PriorityBadge({ priority }: { priority: string | null }) {
   };
 
   const colors: Record<string, string> = {
-    alta: 'var(--red)',
-    media: 'var(--yellow)',
-    baixa: '#2563eb',
+    alta: 'var(--danger)',
+    media: 'var(--warning)',
+    baixa: 'var(--task)',
   };
 
   return <Badge label={labels[priority] ?? priority} color={colors[priority] ?? 'var(--text-secondary)'} />;

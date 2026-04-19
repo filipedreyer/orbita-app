@@ -234,10 +234,10 @@ export const useDataStore = create<DataState>((set, get) => ({
         user_id: session.user.id,
         text,
         image_url: imageUrl ?? null,
-        ai_suggested_type: 'tarefa',
+        ai_suggested_type: null,
         ai_suggested_tags: tags || null,
       });
-      set((state) => ({ inbox: [created, ...state.inbox] }));
+      set((state) => ({ inbox: [...state.inbox, created] }));
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Falha ao enviar para inbox.' });
     }
@@ -247,12 +247,14 @@ export const useDataStore = create<DataState>((set, get) => ({
     const inboxItem = get().inbox.find((entry) => entry.id === inboxId);
     if (!session?.user || !inboxItem) return;
     try {
-      const type = asType || inboxItem.ai_suggested_type || 'tarefa';
+      const type = asType || inboxItem.ai_suggested_type;
+      const title = inboxItem.text.trim();
+      if (!type || !title) return;
       const tags = [...(inboxItem.text.match(/#[\w-]+/g) || []), ...(inboxItem.ai_suggested_tags?.match(/#[\w-]+/g) || [])];
       const item = await itemsService.createItem({
         user_id: session.user.id,
         type,
-        title: inboxItem.text,
+        title,
         description: null,
         status: 'active',
         priority: null,

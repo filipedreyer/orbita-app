@@ -2,17 +2,38 @@ import { useEffect, useMemo, useState } from 'react';
 import { DragOverlay, DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AnimatePresence, motion } from 'framer-motion';
-import { GripVertical, Lock } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { GripVertical, Lock, MoveUpRight, TriangleAlert } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { routes } from '../../../app/routes';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { CardRow } from '../../../components/ui/CardRow';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
-import { useRitualDomain } from '../../../store/fazer';
+import { useHojeProjection, useRitualDomain } from '../../../store/fazer';
 import { isRitualLockedItem } from '../domain/ordering';
 
-const steps = ['boas-vindas', 'pendencias', 'capacidade', 'ordenacao', 'fechamento'] as const;
+const LONG_INACTIVITY_DAYS = 14;
+
+function isOlderThanDays(timestamp: string, days: number) {
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  return ageMs > days * 24 * 60 * 60 * 1000;
+}
+
+function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
+  const goal = item.goal_id ? itemsById.get(item.goal_id) : null;
+  const project = item.project_id ? itemsById.get(item.project_id) : null;
+  const linked = Boolean(goal || project || item.type === 'habito' || item.type === 'rotina' || item.type === 'inegociavel');
+
+  if (goal) return { linked, context: `Meta: ${goal.title}` };
+  if (project) return { linked, context: `Projeto: ${project.title}` };
+  if (item.type === 'habito') return { linked, context: 'Habito refletido na execucao' };
+  if (item.type === 'rotina') return { linked, context: 'Rotina refletida na execucao' };
+  if (item.type === 'inegociavel') return { linked, context: 'Inegociavel protegendo a capacidade do dia' };
+
+  return { linked: false, context: 'Execucao sem vinculo direcional explicito' };
+}
 
 function SortableRitualRow({ item, isLast }: { item: Item; isLast: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
@@ -35,8 +56,8 @@ function SortableRitualRow({ item, isLast }: { item: Item; isLast: boolean }) {
           type="button"
           {...attributes}
           {...listeners}
-          className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border bg-white text-[var(--text-secondary)] transition ${
-            isDragging ? 'border-[var(--teal)] shadow-lg' : 'border-[var(--border)]'
+          className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl border bg-[var(--surface)] text-[var(--text-secondary)] transition ${
+            isDragging ? 'border-[var(--accent)] shadow-[var(--shadow-card)]' : 'border-[var(--border)]'
           }`}
           aria-label={`Reordenar ${item.title}`}
         >
@@ -47,12 +68,33 @@ function SortableRitualRow({ item, isLast }: { item: Item; isLast: boolean }) {
   );
 }
 
+function renderSimpleList(items: Item[], emptyLabel: string) {
+  if (items.length === 0) {
+    return <p className="text-sm text-[var(--text-secondary)]">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 4).map((item) => (
+        <div key={item.id} className="rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] px-4 py-3">
+          <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+        </div>
+      ))}
+      {items.length > 4 ? <p className="text-xs text-[var(--text-tertiary)]">+ {items.length - 4} itens adicionais</p> : null}
+    </div>
+  );
+}
+
 export function RitualPageV2() {
+  const navigate = useNavigate();
   const domain = useRitualDomain();
-  const { completeItem, rescheduleItem, setRitualOrder } = useDataStore();
+  const projection = useHojeProjection();
+  const items = useDataStore((state) => state.items);
   const ritualOrder = useDataStore((state) => state.ritualOrder);
-  const [stepIndex, setStepIndex] = useState(0);
+  const setRitualOrder = useDataStore((state) => state.setRitualOrder);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [showOrdering, setShowOrdering] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
@@ -64,25 +106,89 @@ export function RitualPageV2() {
     }
   }, [domain.normalizedRitualOrder, ritualOrder, setRitualOrder]);
 
+  const executionZones = useMemo(() => {
+    const activeFocusItems = projection.sections.focusItems;
+    const immediateTodayItems = activeFocusItems.filter((item) => item.due_date === domain.referenceDate);
+    const immediatePriorityItems = activeFocusItems.filter((item) => item.due_date !== domain.referenceDate && item.priority === 'alta');
+    const agora = [...immediateTodayItems, ...immediatePriorityItems];
+    const agoraIds = new Set(agora.map((item) => item.id));
+    const cabeHoje = activeFocusItems.filter((item) => !agoraIds.has(item.id));
+
+    const revisitItems = items.filter((item) => {
+      if (item.status === 'done' || item.status === 'archived') return false;
+      const metadata = (item.metadata || {}) as Record<string, unknown>;
+      return metadata.inbox_needs_revisit === true;
+    });
+
+    const inactiveItems = items.filter((item) => {
+      if (item.status !== 'active' && item.status !== 'paused') return false;
+      if (item.due_date) return false;
+      const metadata = (item.metadata || {}) as Record<string, unknown>;
+      if (metadata.inbox_needs_revisit === true) return false;
+      return isOlderThanDays(item.updated_at || item.created_at, LONG_INACTIVITY_DAYS);
+    });
+
+    const atencao = [...domain.overdueItems, ...revisitItems, ...inactiveItems].filter(
+      (item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index,
+    );
+
+    return { agora, cabeHoje, atencao, revisitItems };
+  }, [domain.overdueItems, domain.referenceDate, items, projection.sections.focusItems]);
+
+  const capacitySignal = useMemo(() => {
+    const count = executionZones.agora.length;
+
+    if (count <= 3) {
+      return {
+        label: 'Equilibrado',
+        description: 'O bloco de execucao imediata parece caber no ritmo do dia.',
+        tone: 'balanced',
+      };
+    }
+
+    if (count <= 5) {
+      return {
+        label: 'Carregado',
+        description: 'Ha pressao real no agora. Vale proteger foco antes de adicionar mais frentes.',
+        tone: 'loaded',
+      };
+    }
+
+    return {
+      label: 'Sobrecarregado',
+      description: 'Itens demais disputando execucao imediata. O dia pede reducao de friccao.',
+      tone: 'overloaded',
+    };
+  }, [executionZones.agora.length]);
+
+  const directionSummary = useMemo(() => {
+    const itemsById = new Map(items.map((item) => [item.id, item]));
+    const linkedCount = projection.sections.focusItems.filter((item) => getExecutionLinkState(item, itemsById).linked).length;
+    const standaloneCount = projection.sections.focusItems.length - linkedCount;
+
+    return { linkedCount, standaloneCount };
+  }, [items, projection.sections.focusItems]);
+
   const orderedItems = useMemo(() => {
     const rank = new Map(ritualOrder.map((id, index) => [id, index]));
     return [...domain.ritualItems].sort((left, right) => (rank.get(left.id) ?? 999) - (rank.get(right.id) ?? 999));
   }, [domain.ritualItems, ritualOrder]);
+
   const lockedItems = orderedItems.filter((item) => isRitualLockedItem(item));
   const sortableItems = orderedItems.filter((item) => !isRitualLockedItem(item));
-
-  const currentStep = steps[stepIndex];
+  const sortableIds = sortableItems.map((item) => item.id);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     setActiveItemId(null);
     if (!over || active.id === over.id) return;
 
-    const oldIndex = ritualOrder.indexOf(String(active.id));
-    const newIndex = ritualOrder.indexOf(String(over.id));
+    const oldIndex = sortableIds.indexOf(String(active.id));
+    const newIndex = sortableIds.indexOf(String(over.id));
     if (oldIndex === -1 || newIndex === -1) return;
 
-    setRitualOrder(arrayMove(ritualOrder, oldIndex, newIndex));
+    const nextSortableIds = arrayMove(sortableIds, oldIndex, newIndex);
+    setRitualOrder([...lockedItems.map((item) => item.id), ...nextSortableIds]);
   }
 
   const activeItem = sortableItems.find((item) => item.id === activeItemId) ?? null;
@@ -90,159 +196,176 @@ export function RitualPageV2() {
   return (
     <div className="space-y-4">
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Ritual do dia</p>
-        <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Revisao guiada</h3>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Ritual de abertura</p>
+        <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Abrir o dia com clareza</h3>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
+          Esta abertura nao pede respostas nem checklists. Ela so enquadra o dia antes da execucao: o que merece atencao, se o desenho de hoje cabe e se o foco segue conectado a direcao.
+        </p>
       </div>
 
-      <Card className="space-y-3">
-        <p className="text-sm text-[var(--text-secondary)]">Etapa {stepIndex + 1} de {steps.length}</p>
+      <Card className="space-y-3 p-4">
+        <p className="text-sm font-semibold text-[var(--text)]">Antes de entrar em Hoje</p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          Leia estes tres sinais como uma moldura breve do dia. O objetivo aqui nao e executar nem revisar tudo, e comecar com nocao de risco, ritmo e alinhamento.
+        </p>
+      </Card>
 
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="space-y-3"
-          >
-            {currentStep === 'boas-vindas' ? (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold">Bom dia</h4>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  Voce tem {domain.pendingItems.length} pendencias, {domain.ritualItems.length} itens do dia e {domain.capacity.operationalHours}h de capacidade operacional estimada.
-                </p>
-              </div>
-            ) : null}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Risco</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">O que pede atencao antes de comecar</h4>
+            </div>
+            <div className="rounded-[var(--radius-pill)] border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-1 text-sm font-semibold text-[var(--text)]">
+              {executionZones.atencao.length}
+            </div>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {domain.overdueItems.length} em atraso - {executionZones.revisitItems.length} adiados precisando voltar
+          </p>
+          {renderSimpleList(executionZones.atencao, 'Nenhum risco destacado agora.')}
+        </Card>
 
-            {currentStep === 'pendencias' ? (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold">Pendencias</h4>
-                {domain.pendingItems.length > 0 ? (
-                  <div className="space-y-2">
-                    {domain.pendingItems.map((item) => (
-                      <motion.div key={item.id} layout>
-                        <Card className="space-y-3">
-                          <div>
-                            <p className="font-semibold">{item.title}</p>
-                            <p className="text-sm text-[var(--text-secondary)]">{item.type}</p>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button variant="secondary" onClick={() => completeItem(item.id)}>Concluir</Button>
-                            <Button
-                              variant="ghost"
-                              onClick={() => {
-                                const tomorrow = new Date();
-                                tomorrow.setDate(tomorrow.getDate() + 1);
-                                void rescheduleItem(item.id, tomorrow.toISOString().slice(0, 10));
-                              }}
-                            >
-                              Adiar para amanha
-                            </Button>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-[var(--text-secondary)]">Nenhuma pendencia aberta para revisar.</p>
-                )}
-              </div>
-            ) : null}
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Capacidade</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">Como o dia esta desenhado</h4>
+            </div>
+            <div
+              className={[
+                'rounded-[var(--radius-pill)] border px-3 py-1 text-sm font-semibold',
+                capacitySignal.tone === 'overloaded'
+                  ? 'border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--text)]'
+                  : capacitySignal.tone === 'loaded'
+                    ? 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'
+                    : 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]',
+              ].join(' ')}
+            >
+              {capacitySignal.label}
+            </div>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)]">{capacitySignal.description}</p>
+          <div className="rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+            Para fazer agora: <span className="font-semibold text-[var(--text)]">{executionZones.agora.length}</span>
+            <br />
+            Cabe hoje: <span className="font-semibold text-[var(--text)]">{executionZones.cabeHoje.length}</span>
+          </div>
+        </Card>
 
-            {currentStep === 'capacidade' ? (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold">Capacidade</h4>
-                <div className="grid gap-3 md:grid-cols-3">
-                  <div className="rounded-2xl bg-[var(--surface-alt)] p-4 text-sm text-[var(--text-secondary)]">
-                    Total do dia: <span className="font-semibold text-[var(--text)]">{domain.capacity.totalHours}h</span>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--surface-alt)] p-4 text-sm text-[var(--text-secondary)]">
-                    Inegociaveis: <span className="font-semibold text-[var(--text)]">{domain.capacity.inegociavelBlockHours}h</span>
-                  </div>
-                  <div className="rounded-2xl bg-[var(--surface-alt)] p-4 text-sm text-[var(--text-secondary)]">
-                    Operacional: <span className="font-semibold text-[var(--text)]">{domain.capacity.operationalHours}h</span>
-                  </div>
-                </div>
-              </div>
-            ) : null}
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Direcao</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">Para onde o dia esta apontando</h4>
+            </div>
+            <div className="rounded-[var(--radius-pill)] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent)]">
+              {directionSummary.linkedCount}
+            </div>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {directionSummary.linkedCount} itens ligados a direcao - {directionSummary.standaloneCount} em execucao solta
+          </p>
+          <div className="rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+            {directionSummary.standaloneCount > directionSummary.linkedCount
+              ? 'O dia esta mais solto do que conectado ao que Planejar aponta.'
+              : 'A maior parte da execucao ainda conversa com a direcao do sistema.'}
+          </div>
+        </Card>
+      </div>
 
-            {currentStep === 'ordenacao' ? (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold">Ordenacao do dia</h4>
-                {lockedItems.length > 0 ? (
-                  <Card>
-                    {lockedItems.map((item, index) => (
-                      <CardRow key={item.id} isLast={index === lockedItems.length - 1}>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{item.title}</p>
-                          <p className="text-xs text-[var(--text-secondary)]">Bloco fixo · {item.type}</p>
-                        </div>
-                        <div className="inline-flex items-center gap-2 rounded-2xl bg-[var(--surface-alt)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
-                          <Lock className="h-3.5 w-3.5" />
-                          Fixo
-                        </div>
-                      </CardRow>
-                    ))}
-                  </Card>
-                ) : null}
-
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragStart={(event) => setActiveItemId(String(event.active.id))}
-                  onDragCancel={() => setActiveItemId(null)}
-                  onDragEnd={handleDragEnd}
-                >
-                  <SortableContext items={ritualOrder} strategy={verticalListSortingStrategy}>
-                    <Card className={activeItem ? 'ring-2 ring-[var(--teal)]/20 transition' : 'transition'}>
-                      {sortableItems.map((item, index) => (
-                        <SortableRitualRow key={item.id} item={item} isLast={index === sortableItems.length - 1} />
-                      ))}
-                    </Card>
-                  </SortableContext>
-                  <DragOverlay dropAnimation={{ duration: 180, easing: 'ease-out' }}>
-                    {activeItem ? (
-                      <motion.div initial={{ scale: 0.98, opacity: 0.92 }} animate={{ scale: 1.02, opacity: 1 }} className="rounded-3xl shadow-2xl">
-                        <Card className="min-w-[320px] border-[var(--teal)] bg-white">
-                          <div className="flex items-center gap-3">
-                            <GripVertical className="h-4 w-4 text-[var(--teal)]" />
-                            <div>
-                              <p className="text-sm font-medium">{activeItem.title}</p>
-                              <p className="text-xs text-[var(--text-secondary)]">{activeItem.type}</p>
-                            </div>
-                          </div>
-                        </Card>
-                      </motion.div>
-                    ) : null}
-                  </DragOverlay>
-                </DndContext>
-              </div>
-            ) : null}
-
-            {currentStep === 'fechamento' ? (
-              <div className="space-y-3">
-                <h4 className="text-lg font-semibold">Dia organizado</h4>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  A ordem final do Ritual ja foi persistida e a lista do dia em Hoje reflete exatamente essa sequencia.
-                </p>
-                <div className="rounded-2xl bg-[var(--surface-alt)] p-4 text-sm text-[var(--text-secondary)]">
-                  Primeiros itens: {orderedItems.slice(0, 3).map((item) => item.title).join(' · ') || 'Nenhum item definido'}
-                </div>
-              </div>
-            ) : null}
-          </motion.div>
-        </AnimatePresence>
-
-        <div className="flex justify-between gap-3 pt-2">
-          <Button variant="ghost" disabled={stepIndex === 0} onClick={() => setStepIndex((current) => Math.max(0, current - 1))}>
-            Voltar
-          </Button>
-          <Button disabled={stepIndex === steps.length - 1} onClick={() => setStepIndex((current) => Math.min(steps.length - 1, current + 1))}>
-            Avancar
-          </Button>
+      <Card className="space-y-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">Passagem para a execucao</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Se a leitura estiver suficiente, siga para Hoje. Se precisar, ajuste a ordem manual antes de comecar.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => setShowOrdering((current) => !current)}>
+              {showOrdering ? 'Ocultar ordem' : 'Ajustar ordem'}
+            </Button>
+            <Button onClick={() => navigate(routes.fazerHoje)}>
+              <MoveUpRight className="h-4 w-4" />
+              Ir para o dia
+            </Button>
+          </div>
         </div>
       </Card>
+
+      {showOrdering ? (
+        <Card className="space-y-4 p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">Ordem manual do ritual</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Ajuste fino opcional antes da execucao. Itens fixos continuam protegidos e a ordem segue refletida em Hoje.
+            </p>
+          </div>
+
+          {lockedItems.length > 0 ? (
+            <Card className="space-y-0 p-0">
+              {lockedItems.map((item, index) => (
+                <CardRow key={item.id} isLast={index === lockedItems.length - 1}>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{item.title}</p>
+                    <p className="text-xs text-[var(--text-secondary)]">Bloco fixo - {item.type}</p>
+                  </div>
+                  <div className="inline-flex items-center gap-2 rounded-2xl bg-[var(--surface-alt)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]">
+                    <Lock className="h-3.5 w-3.5" />
+                    Fixo
+                  </div>
+                </CardRow>
+              ))}
+            </Card>
+          ) : null}
+
+          {sortableItems.length > 0 ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={(event) => setActiveItemId(String(event.active.id))}
+              onDragCancel={() => setActiveItemId(null)}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={sortableIds} strategy={verticalListSortingStrategy}>
+                <Card className={activeItem ? 'p-0 ring-2 ring-[var(--accent)]/20 transition' : 'p-0 transition'}>
+                  {sortableItems.map((item, index) => (
+                    <SortableRitualRow key={item.id} item={item} isLast={index === sortableItems.length - 1} />
+                  ))}
+                </Card>
+              </SortableContext>
+              <DragOverlay dropAnimation={{ duration: 180, easing: 'ease-out' }}>
+                {activeItem ? (
+                  <motion.div initial={{ scale: 0.98, opacity: 0.92 }} animate={{ scale: 1.02, opacity: 1 }} className="rounded-3xl shadow-2xl">
+                    <Card className="min-w-[320px] border-[var(--accent)] bg-[var(--surface)]">
+                      <div className="flex items-center gap-3">
+                        <GripVertical className="h-4 w-4 text-[var(--accent)]" />
+                        <div>
+                          <p className="text-sm font-medium">{activeItem.title}</p>
+                          <p className="text-xs text-[var(--text-secondary)]">{activeItem.type}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  </motion.div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          ) : (
+            <div className="rounded-[var(--radius-2xl)] border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+              Nao ha itens moviveis na ordem do ritual hoje.
+            </div>
+          )}
+
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--warning)]/20 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text-secondary)]">
+            <div className="flex items-start gap-2">
+              <TriangleAlert className="mt-0.5 h-4 w-4 text-[var(--warning)]" />
+              <p>Este ajuste continua opcional. O Ritual enquadra o inicio do dia; Hoje segue como superficie de execucao e Revisao continua sendo a camada de recalibracao mais ampla.</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
     </div>
   );
 }

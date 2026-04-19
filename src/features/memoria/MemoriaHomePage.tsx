@@ -40,7 +40,7 @@ export function MemoriaHomePage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <OnboardingChecklist
         area="memoria"
         title="Como usar a Memoria"
@@ -56,35 +56,41 @@ export function MemoriaHomePage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <button type="button" onClick={() => navigate(routes.memoriaInbox)} className="text-left">
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-4 p-5 transition hover:border-[var(--border-strong)]">
             <div className="flex items-center gap-3">
-              <Inbox className="h-5 w-5 text-[var(--teal)]" />
-              <p className="text-sm font-semibold">Inbox</p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] text-[var(--accent)]">
+                <Inbox className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-[var(--text)]">Inbox</p>
             </div>
-            <p className="text-3xl font-bold">{inbox.length}</p>
-            <p className="text-sm text-[var(--text-secondary)]">Capturas esperando triagem.</p>
+            <p className="text-3xl font-bold tracking-[-0.04em] text-[var(--text)]">{inbox.length}</p>
+            <p className="text-sm leading-6 text-[var(--text-secondary)]">Capturas esperando triagem.</p>
           </Card>
         </button>
 
         <button type="button" onClick={() => navigate(routes.memoriaAtalhos)} className="text-left">
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-4 p-5 transition hover:border-[var(--border-strong)]">
             <div className="flex items-center gap-3">
-              <Link2 className="h-5 w-5 text-[var(--teal)]" />
-              <p className="text-sm font-semibold">Atalhos</p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] text-[var(--accent)]">
+                <Link2 className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-[var(--text)]">Atalhos</p>
             </div>
-            <p className="text-3xl font-bold">{shortcutItems.length}</p>
-            <p className="text-sm text-[var(--text-secondary)]">Entradas marcadas para acesso rapido.</p>
+            <p className="text-3xl font-bold tracking-[-0.04em] text-[var(--text)]">{shortcutItems.length}</p>
+            <p className="text-sm leading-6 text-[var(--text-secondary)]">Entradas marcadas para acesso rapido.</p>
           </Card>
         </button>
 
         <button type="button" onClick={() => navigate(routes.memoriaCaixola)} className="text-left">
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-4 p-5 transition hover:border-[var(--border-strong)]">
             <div className="flex items-center gap-3">
-              <FileStack className="h-5 w-5 text-[var(--teal)]" />
-              <p className="text-sm font-semibold">Caixola</p>
+              <div className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] text-[var(--accent)]">
+                <FileStack className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-[var(--text)]">Caixola</p>
             </div>
-            <p className="text-3xl font-bold">{noteItems.length}</p>
-            <p className="text-sm text-[var(--text-secondary)]">{diaryItems.length} diarios ja recuperaveis.</p>
+            <p className="text-3xl font-bold tracking-[-0.04em] text-[var(--text)]">{noteItems.length}</p>
+            <p className="text-sm leading-6 text-[var(--text-secondary)]">{diaryItems.length} diarios ja recuperaveis.</p>
           </Card>
         </button>
       </div>
@@ -93,23 +99,28 @@ export function MemoriaHomePage() {
         <IASuggestion suggestion={routeContext.suggestions[0]} completedActions={completedActions} onRunAction={triggerAction} />
       ) : null}
 
-      <Card className="space-y-3 p-4">
+      <Card className="space-y-4 p-5">
         <div className="flex items-center gap-3">
-          <Search className="h-4 w-4 text-[var(--text-secondary)]" />
-          <p className="text-sm font-semibold">Busca</p>
+          <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] text-[var(--text-secondary)]">
+            <Search className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Busca</p>
+            <p className="mt-1 text-sm font-semibold text-[var(--text)]">Recuperacao rapida</p>
+          </div>
         </div>
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar em notas, itens e memorias..." />
         {search.trim() ? (
           <div className="space-y-2">
             {searchResults.length > 0 ? (
               searchResults.map((result) => (
-                <div key={result.id} className="rounded-2xl bg-[var(--surface-alt)] px-4 py-3">
+                <div key={result.id} className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3">
                   <p className="text-sm font-medium text-[var(--text)]">{result.title}</p>
                   <p className="mt-1 text-xs text-[var(--text-secondary)]">{result.preview}</p>
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">Nenhum resultado encontrado.</div>
+              <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">Nenhum resultado encontrado.</div>
             )}
           </div>
         ) : (
@@ -119,10 +130,12 @@ export function MemoriaHomePage() {
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {hubLinks.map((link) => (
-          <Card key={link.path} className="space-y-3 p-4">
+          <Card key={link.path} className="space-y-4 p-5">
             <div className="flex items-center gap-3">
-              <link.icon className="h-4 w-4 text-[var(--teal)]" />
-              <p className="text-sm font-semibold">{link.label}</p>
+              <div className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] text-[var(--accent)]">
+                <link.icon className="h-4 w-4" />
+              </div>
+              <p className="text-sm font-semibold text-[var(--text)]">{link.label}</p>
             </div>
             <Button variant="secondary" onClick={() => navigate(link.path)}>
               Abrir

@@ -1,35 +1,74 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 :root {
+  --font-sans: "DM Sans", "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", "SFMono-Regular", "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+
   --bg: #f8f8f8;
+  /* Provisional foundation tokens inferred from the current product surface. */
+  --bg-elevated: #fbfcfc;
   --surface: #ffffff;
   --surface-alt: #f4f6f6;
+  --surface-disabled: #f1f3f3;
   --text: #111111;
   --text-secondary: #5f6666;
   --text-tertiary: #8b9494;
   --border: #e5ecec;
-  --teal: #0e6b6b;
-  --teal-light: #e8f4f4;
-  --teal-mid: #b8dede;
-  --red: #d94f4f;
-  --yellow: #e8a817;
-  --green: #3ba55c;
-  font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --border-strong: #d7e2e2;
+  --accent: #0e6b6b;
+  --accent-soft: #e8f4f4;
+  --accent-border: #b8dede;
+  --danger: #d94f4f;
+  --warning: #e8a817;
+  --success: #3ba55c;
+  /* Provisional semantic token for task/purple until the DS exposes an official value. */
+  --task: #6f5ef9;
+  --overlay: rgba(17, 17, 17, 0.32);
+  --focus-ring: rgba(14, 107, 107, 0.16);
+  --focus-ring-danger: rgba(217, 79, 79, 0.14);
+
+  /* Provisional radii inferred from the existing UI scale. Replace centrally later if the DS changes. */
+  --radius-md: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+  --radius-4xl: 2rem;
+  --radius-pill: 9999px;
+
+  /* Provisional elevation aliases inferred from current component usage. */
+  --shadow-card: 0 10px 30px rgba(17, 17, 17, 0.04);
+  --shadow-floating: 0 4px 16px rgba(14, 107, 107, 0.35);
+  --shadow-emphasis: 0 8px 20px rgba(14, 107, 107, 0.28);
+  --shadow-sheet: 0 24px 80px rgba(17, 17, 17, 0.12);
+
+  /* Aliases legados para manter compatibilidade visual sem reabrir telas. */
+  --teal: var(--accent);
+  --teal-light: var(--accent-soft);
+  --teal-mid: var(--accent-border);
+  --red: var(--danger);
+  --yellow: var(--warning);
+  --green: var(--success);
+
+  font-family: var(--font-sans);
   color: var(--text);
   background: var(--bg);
+  color-scheme: light;
 }
 
 html {
   background: var(--bg);
+  font-family: var(--font-sans);
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: var(--font-sans);
   background:
-    radial-gradient(circle at top, rgba(184, 222, 222, 0.38), transparent 32%),
-    linear-gradient(180deg, #fbfcfc 0%, #f6f8f8 100%);
+    radial-gradient(circle at top, color-mix(in srgb, var(--accent-border) 38%, transparent), transparent 32%),
+    linear-gradient(180deg, var(--bg-elevated) 0%, var(--bg) 100%);
 }
 
 * {
@@ -44,4 +83,11 @@ a {
 button,
 input {
   font: inherit;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
 }

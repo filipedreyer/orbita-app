@@ -65,7 +65,7 @@ export async function deleteSubItem(id: string): Promise<void> {
 }
 
 export async function fetchInbox(userId: string): Promise<InboxItem[]> {
-  const { data, error } = await supabase.from('inbox').select('*').eq('user_id', userId).order('created_at', { ascending: false });
+  const { data, error } = await supabase.from('inbox').select('*').eq('user_id', userId).order('created_at', { ascending: true });
   if (error) throw error;
   return data ?? [];
 }

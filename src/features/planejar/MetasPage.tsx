@@ -9,6 +9,7 @@ import { PlanningItemEditorPanel, type PlanningEditorValues } from './PlanningIt
 
 export function MetasPage() {
   const session = useAuthStore((state) => state.session);
+  const items = useDataStore((state) => state.items);
   const addItem = useDataStore((state) => state.addItem);
   const updateItem = useDataStore((state) => state.updateItem);
   const portfolio = usePlanejarPortfolio();
@@ -21,17 +22,30 @@ export function MetasPage() {
       portfolio.goals.map((goal) => {
         const metadata = (goal.metadata as Record<string, unknown>) ?? {};
         const linkedProjects = portfolio.projectsByGoal.get(goal.id) ?? [];
+        const linkedExecutionItems = portfolio.projects
+          .filter((project) => project.goal_id === goal.id)
+          .concat(portfolio.habits.filter((habit) => habit.goal_id === goal.id))
+          .concat(
+            items.filter(
+              (item) =>
+                item.status === 'active' &&
+                item.goal_id === goal.id &&
+                (item.type === 'tarefa' || item.type === 'rotina'),
+            ),
+          );
         const doneProjects = linkedProjects.filter((project) => project.status === 'done').length;
         const progress = linkedProjects.length > 0 ? (doneProjects / linkedProjects.length) * 100 : 0;
         return {
           goal,
           linkedProjects,
+          linkedExecutionItems,
           direction: (metadata.direction as 'up' | 'stable' | 'down') ?? 'up',
           progress,
         };
       }),
-    [portfolio.goals, portfolio.projectsByGoal],
+    [items, portfolio.goals, portfolio.habits, portfolio.projects, portfolio.projectsByGoal],
   );
+  const goalsWithoutExecutionCount = cards.filter((card) => card.linkedExecutionItems.length === 0).length;
 
   async function handleSave(values: PlanningEditorValues) {
     if (!session?.user) return;
@@ -84,8 +98,15 @@ export function MetasPage() {
         </div>
       </Card>
 
+      {goalsWithoutExecutionCount > 0 ? (
+        <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">{goalsWithoutExecutionCount} metas sem execução ativa</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">A direção existe, mas ainda não está ganhando tração concreta em Fazer.</p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4">
-        {cards.map(({ goal, linkedProjects, direction, progress }) => (
+        {cards.map(({ goal, linkedProjects, linkedExecutionItems, direction, progress }) => (
           <Card key={goal.id} className="space-y-4 p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -122,6 +143,15 @@ export function MetasPage() {
                   <div className="rounded-2xl bg-white px-4 py-3 text-sm text-[var(--text-secondary)]">Nenhum projeto vinculado ainda.</div>
                 )}
               </div>
+            </div>
+
+            <div className={`rounded-2xl border px-4 py-3 text-sm ${linkedExecutionItems.length > 0 ? 'border-[var(--accent-border)] bg-[var(--surface)] text-[var(--text-secondary)]' : 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'}`}>
+              <p className="font-semibold">{linkedExecutionItems.length} frentes ativas ligadas</p>
+              <p className="mt-1">
+                {linkedExecutionItems.length > 0
+                  ? 'Esta meta já tem execução conectada.'
+                  : 'Gap de execução: a meta existe, mas ainda não apareceu em Fazer.'}
+              </p>
             </div>
 
             <div className="flex gap-2">

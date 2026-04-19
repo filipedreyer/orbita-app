@@ -23,7 +23,7 @@ export function EditorToolbar({ editor }: { editor: Editor | null }) {
   if (!editor) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 rounded-2xl border border-[var(--border)] bg-white p-3">
+    <div className="flex flex-wrap gap-2 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-card)]">
       <ToolbarButton active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()} label="Normal" />
       <ToolbarButton active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} label="H1" />
       <ToolbarButton active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} label="H2" />

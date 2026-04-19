@@ -1,90 +1,189 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle2, Clock3, MoonStar, TriangleAlert } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
-import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
-import { useAuthStore, useDataStore } from '../../../store';
-import { useEncerramentoDomain } from '../../../store/fazer';
-import { StepConexoes } from './StepConexoes';
-import { StepDiario } from './StepDiario';
-import { StepRetrospecto } from './StepRetrospecto';
+import { Card } from '../../../components/ui/Card';
+import type { Item } from '../../../lib/types';
+import { useDataStore } from '../../../store';
+import { useEncerramentoDomain, useHojeDomain, useHojeProjection } from '../../../store/fazer';
+
+const LONG_INACTIVITY_DAYS = 14;
+
+function isOlderThanDays(timestamp: string, days: number) {
+  const ageMs = Date.now() - new Date(timestamp).getTime();
+  return ageMs > days * 24 * 60 * 60 * 1000;
+}
+
+function renderSimpleList(items: Item[], emptyLabel: string) {
+  if (items.length === 0) {
+    return <p className="text-sm text-[var(--text-secondary)]">{emptyLabel}</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {items.slice(0, 4).map((item) => (
+        <div key={item.id} className="rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] px-4 py-3">
+          <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+          <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+        </div>
+      ))}
+      {items.length > 4 ? <p className="text-xs text-[var(--text-tertiary)]">+ {items.length - 4} itens adicionais</p> : null}
+    </div>
+  );
+}
 
 export function EncerramentoPageV2() {
-  const session = useAuthStore((state) => state.session);
-  const addItem = useDataStore((state) => state.addItem);
   const domain = useEncerramentoDomain();
-  const [stepIndex, setStepIndex] = useState(0);
-  const [journal, setJournal] = useState('');
-  const [saved, setSaved] = useState(false);
+  const hojeDomain = useHojeDomain();
+  const projection = useHojeProjection();
+  const items = useDataStore((state) => state.items);
   const [lightsOut, setLightsOut] = useState(false);
-  const { showFeedback } = useActionFeedback();
 
-  const positiveLines = useMemo(() => {
-    return [
-      domain.completedCount > 0 ? `Voce concluiu ${domain.completedCount} itens hoje.` : 'Hoje foi um dia de observacao e ajuste.',
-      domain.respectedInegociaveisCount > 0 ? `${domain.respectedInegociaveisCount} inegociaveis permaneceram protegidos.` : 'Ainda ha espaco para proteger melhor seus inegociaveis.',
-      'Boa noite. Descanse bem.',
-    ];
-  }, [domain.completedCount, domain.respectedInegociaveisCount]);
+  const unfinishedItems = useMemo(
+    () => projection.sections.focusItems.filter((item) => item.status === 'active' || item.status === 'paused'),
+    [projection.sections.focusItems],
+  );
 
-  async function handleFinish() {
-    if (!journal.trim() || !session?.user || saved) return;
+  const postponedItems = useMemo(
+    () =>
+      items.filter((item) => {
+        if (item.status === 'done' || item.status === 'archived') return false;
+        const metadata = (item.metadata || {}) as Record<string, unknown>;
+        return metadata.inbox_postponed === true || metadata.inbox_needs_revisit === true;
+      }),
+    [items],
+  );
 
-    await addItem({
-      user_id: session.user.id,
-      type: 'nota',
-      title: `Diario ${domain.referenceDate}`,
-      description: journal.trim(),
-      status: 'active',
-      priority: null,
-      due_date: domain.referenceDate,
-      completed_at: null,
-      goal_id: null,
-      project_id: null,
-      tags: ['diario'],
-      reschedule_count: 0,
-      metadata: {
-        tags: ['diario'],
-        diary_date: domain.referenceDate,
-      },
-      image_url: null,
+  const reconsiderItems = useMemo(() => {
+    const riskyInactive = items.filter((item) => {
+      if (item.status !== 'active' && item.status !== 'paused') return false;
+      if (item.due_date) return false;
+      const metadata = (item.metadata || {}) as Record<string, unknown>;
+      if (metadata.inbox_needs_revisit === true) return false;
+      return isOlderThanDays(item.updated_at || item.created_at, LONG_INACTIVITY_DAYS);
     });
 
-    setSaved(true);
-    setLightsOut(true);
-    showFeedback('Diario salvo. O dia foi encerrado.');
-  }
+    return [...postponedItems, ...riskyInactive].filter(
+      (item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index,
+    );
+  }, [items, postponedItems]);
+
+  const attentionItems = useMemo(
+    () => [...hojeDomain.overdueItems, ...reconsiderItems].filter((item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index),
+    [hojeDomain.overdueItems, reconsiderItems],
+  );
 
   return (
     <div className="space-y-4">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Encerramento</p>
-        <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Fechar o dia com leveza</h3>
+        <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Fechar o dia sem arrastar o sistema</h3>
+        <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
+          Este fechamento nao vira relatorio nem diario obrigatorio. Ele so recolhe o que o dia entregou, o que continua aberto e o que nao deveria ser levado adiante no automatico.
+        </p>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div
-          key={stepIndex}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.2, ease: 'easeOut' }}
-        >
-          {stepIndex === 0 ? <StepRetrospecto items={domain.completedItems} /> : null}
-          {stepIndex === 1 ? <StepDiario value={journal} onChange={setJournal} /> : null}
-          {stepIndex === 2 ? <StepConexoes lines={positiveLines} /> : null}
-        </motion.div>
-      </AnimatePresence>
+      <Card className="space-y-3 p-4">
+        <p className="text-sm font-semibold text-[var(--text)]">Antes de desligar</p>
+        <p className="text-sm text-[var(--text-secondary)]">
+          O foco aqui e encerrar o ciclo do dia com nitidez. Nao e revisar o sistema inteiro, nem replanejar tudo agora.
+        </p>
+      </Card>
 
-      <div className="flex justify-between gap-3">
-        <Button variant="ghost" disabled={stepIndex === 0} onClick={() => setStepIndex((current) => Math.max(0, current - 1))}>
-          Voltar
-        </Button>
-        {stepIndex < 2 ? (
-          <Button onClick={() => setStepIndex((current) => Math.min(2, current + 1))}>Avancar</Button>
-        ) : (
-          <Button onClick={handleFinish}>{saved ? 'Diario salvo' : 'Encerrar o dia'}</Button>
-        )}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Resumo</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">O que o dia conseguiu fechar</h4>
+            </div>
+            <CheckCircle2 className="h-5 w-5 text-[var(--accent)]" />
+          </div>
+          <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><span className="font-semibold text-[var(--text)]">{domain.completedCount}</span> itens concluidos hoje.</p>
+            <p><span className="font-semibold text-[var(--text)]">{unfinishedItems.length}</span> itens ainda seguem abertos.</p>
+            <p><span className="font-semibold text-[var(--text)]">{domain.respectedInegociaveisCount}</span> inegociaveis permaneceram protegidos.</p>
+          </div>
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Continuacao</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">O que ainda pede continuidade</h4>
+            </div>
+            <Clock3 className="h-5 w-5 text-[var(--warning)]" />
+          </div>
+          <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><span className="font-semibold text-[var(--text)]">{unfinishedItems.length}</span> ativos seguem para reavaliacao no proximo ciclo.</p>
+            <p><span className="font-semibold text-[var(--text)]">{reconsiderItems.length}</span> pedem uma pausa de discernimento antes de simplesmente carregar para frente.</p>
+          </div>
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Sinais do sistema</p>
+              <h4 className="mt-2 text-lg font-semibold text-[var(--text)]">O que nao convem esquecer</h4>
+            </div>
+            <TriangleAlert className="h-5 w-5 text-[var(--danger)]" />
+          </div>
+          <div className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <p><span className="font-semibold text-[var(--text)]">{hojeDomain.overdueItems.length}</span> seguem em atraso.</p>
+            <p><span className="font-semibold text-[var(--text)]">{postponedItems.length}</span> vieram de adiamento e ainda pedem volta.</p>
+            <p><span className="font-semibold text-[var(--text)]">{attentionItems.length}</span> aparecem em atencao neste fechamento.</p>
+          </div>
+        </Card>
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="space-y-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">O que foi concluido</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Feitos do dia, para poder realmente encerrar o que ja saiu do caminho.</p>
+          </div>
+          {renderSimpleList(domain.completedItems, 'Nenhum item concluido hoje.')}
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">O que continua em aberto</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Itens que seguem vivos, sem exigir que voce resolva tudo agora no fechamento.</p>
+          </div>
+          {renderSimpleList(unfinishedItems, 'Nenhum item ativo permaneceu em aberto.')}
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="space-y-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">Itens para reconsiderar</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Adiados ou itens com sinais de inercia que merecem voltar com mais consciencia depois.</p>
+          </div>
+          {renderSimpleList(reconsiderItems, 'Nenhum item pedindo reconsideracao agora.')}
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">Itens em atencao</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Riscos ainda visiveis no fechamento, sem transformar este momento numa revisao ampla do sistema.</p>
+          </div>
+          {renderSimpleList(attentionItems, 'Nenhum risco adicional destacado neste encerramento.')}
+        </Card>
+      </div>
+
+      <Card className="space-y-4 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text)]">Encerrar o ciclo de hoje</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">Sem formulario longo. So um fechamento leve para concluir o dia e deixar a revisao mais ampla para a camada certa.</p>
+          </div>
+          <Button onClick={() => setLightsOut(true)}>
+            <MoonStar className="h-4 w-4" />
+            Fechar o dia
+          </Button>
+        </div>
+      </Card>
 
       <AnimatePresence>
         {lightsOut ? (
@@ -103,7 +202,7 @@ export function EncerramentoPageV2() {
             >
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Encerramento</p>
               <p className="mt-3 text-xl font-semibold text-white">Luzes baixando suavemente</p>
-              <p className="mt-2 text-sm text-white/70">Dia salvo. Agora e hora de desligar.</p>
+              <p className="mt-2 text-sm text-white/70">Dia lido. Agora e hora de desligar.</p>
             </motion.div>
           </motion.div>
         ) : null}

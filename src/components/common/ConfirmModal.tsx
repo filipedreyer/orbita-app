@@ -26,13 +26,13 @@ export function useConfirm() {
   }
 
   const ConfirmElement = config ? (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4" onClick={close}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[var(--overlay)] p-4" onClick={close}>
       <div
-        className="w-full max-w-md rounded-3xl border border-[var(--border)] bg-white p-6 shadow-2xl"
+        className="w-full max-w-md rounded-[var(--radius-3xl)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-[var(--shadow-sheet)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="mb-4 flex items-center gap-3">
-          <div className="rounded-2xl bg-[var(--teal-light)] p-3 text-[var(--teal)]">
+          <div className="rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] p-3 text-[var(--accent)]">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
@@ -44,7 +44,7 @@ export function useConfirm() {
           {config.actions.map((action) => (
             <Button
               key={action.label}
-              variant={action.variant === 'cancel' ? 'ghost' : action.variant === 'danger' ? 'ghost' : 'primary'}
+              variant={action.variant === 'cancel' ? 'ghost' : action.variant === 'danger' ? 'destructive' : 'primary'}
               className="flex-1"
               onClick={() => {
                 action.onPress();

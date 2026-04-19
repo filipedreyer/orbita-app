@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { Button, Card, StreakIndicator } from '../../components/ui';
 import type { Item } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
+import { useHojeDomain } from '../../store/fazer';
 import { usePlanejarPortfolio } from '../../store/planejar';
 import { EntitySheetWrapper } from '../entity/EntitySheetWrapper';
 import { PlanningItemEditorPanel, type PlanningEditorValues } from './PlanningItemEditorPanel';
@@ -13,6 +14,7 @@ export function HabitosPage() {
   const updateItem = useDataStore((state) => state.updateItem);
   const checkHabit = useDataStore((state) => state.checkHabit);
   const portfolio = usePlanejarPortfolio();
+  const hojeDomain = useHojeDomain();
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [creating, setCreating] = useState(false);
@@ -23,6 +25,7 @@ export function HabitosPage() {
         const metadata = (habit.metadata as Record<string, unknown>) ?? {};
         return {
           habit,
+          isInExecution: hojeDomain.focusItems.some((item: Item) => item.id === habit.id),
           streak: typeof metadata.streak === 'number' ? metadata.streak : 0,
           frequency: typeof metadata.frequency === 'string' ? metadata.frequency : 'daily',
           consistencyLabel:
@@ -33,8 +36,9 @@ export function HabitosPage() {
                 : 'Consistência inicial',
         };
       }),
-    [portfolio.habits],
+    [hojeDomain.focusItems, portfolio.habits],
   );
+  const habitsWithoutExecutionCount = cards.filter((card) => !card.isInExecution).length;
 
   async function handleSave(values: PlanningEditorValues) {
     if (!session?.user) return;
@@ -88,8 +92,15 @@ export function HabitosPage() {
         </div>
       </Card>
 
+      {habitsWithoutExecutionCount > 0 ? (
+        <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+          <p className="text-sm font-semibold text-[var(--text)]">{habitsWithoutExecutionCount} hábitos sem reflexo em Hoje</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">A disciplina existe em Planejar, mas parte dela ainda não está clara na execução diária.</p>
+        </Card>
+      ) : null}
+
       <div className="grid gap-4">
-        {cards.map(({ habit, streak, frequency, consistencyLabel }) => (
+        {cards.map(({ habit, isInExecution, streak, frequency, consistencyLabel }) => (
           <Card key={habit.id} className="space-y-4 p-4">
             <div className="flex items-center gap-2">
               <HeartPulse className="h-4 w-4 text-[var(--teal)]" />
@@ -103,6 +114,15 @@ export function HabitosPage() {
                 <p className="text-sm font-semibold text-[var(--text)]">{consistencyLabel}</p>
                 <p className="text-xs text-[var(--text-secondary)]">Frequência: {frequency}</p>
               </div>
+            </div>
+
+            <div className={`rounded-2xl border px-4 py-3 text-sm ${isInExecution ? 'border-[var(--accent-border)] bg-[var(--surface)] text-[var(--text-secondary)]' : 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'}`}>
+              <p className="font-semibold">{isInExecution ? 'Em execução hoje' : 'Sem execução visível hoje'}</p>
+              <p className="mt-1">
+                {isInExecution
+                  ? 'Este hábito já aparece no fluxo de execução de Hoje.'
+                  : 'Gap de execução: o hábito existe, mas ainda não está entrando no fluxo atual de Hoje.'}
+              </p>
             </div>
 
             <div className="flex gap-2">

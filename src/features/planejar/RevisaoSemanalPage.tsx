@@ -2,6 +2,9 @@ import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck } from 'luci
 import { NavLink } from 'react-router-dom';
 import { Card, ProgressBar } from '../../components/ui';
 import { routes } from '../../app/routes';
+import type { Item } from '../../lib/types';
+import { useDataStore } from '../../store';
+import { useHojeDomain } from '../../store/fazer';
 import { usePlanejarPortfolio } from '../../store/planejar';
 
 const links = [
@@ -12,11 +15,83 @@ const links = [
 ] as const;
 
 export function RevisaoSemanalPage() {
+  const items = useDataStore((state) => state.items);
   const portfolio = usePlanejarPortfolio();
+  const hojeDomain = useHojeDomain();
   const completionRatio =
     portfolio.weeklyReview.projectsCount > 0
       ? Math.min(100, Math.round((portfolio.weeklyReview.completedThisWeek / portfolio.weeklyReview.projectsCount) * 100))
       : 0;
+
+  const postponedNeedingRevisit = items.filter((item) => {
+    if (item.status === 'done' || item.status === 'archived') return false;
+    const metadata = (item.metadata || {}) as Record<string, unknown>;
+    return metadata.inbox_postponed === true && metadata.inbox_needs_revisit === true;
+  });
+
+  const goalsWithoutExecution = portfolio.goals.filter((goal) => {
+    const hasExecution = items.some(
+      (item) =>
+        item.status === 'active' &&
+        item.goal_id === goal.id &&
+        (item.type === 'tarefa' || item.type === 'rotina' || item.type === 'habito' || item.type === 'projeto'),
+    );
+    return !hasExecution;
+  });
+
+  const projectsWithoutExecution = portfolio.projects.filter((project) => {
+    const hasNextStep = items.some((item) => item.status === 'active' && item.type === 'tarefa' && item.project_id === project.id);
+    return !hasNextStep;
+  });
+
+  const habitsWithoutExecution = portfolio.habits.filter(
+    (habit) => !hojeDomain.focusItems.some((item) => item.id === habit.id),
+  );
+
+  const inegociaveisWithoutReflection = portfolio.inegociaveis.filter(
+    (item) =>
+      !hojeDomain.fixedInegociaveis.some((entry) => entry.id === item.id) &&
+      !hojeDomain.capacityOnlyInegociaveis.some((entry) => entry.id === item.id),
+  );
+
+  const activeHojeItems = hojeDomain.focusItems;
+  const standaloneExecution = activeHojeItems.filter((item) => !item.goal_id && !item.project_id && item.type !== 'habito' && item.type !== 'rotina' && item.type !== 'inegociavel');
+  const directionLinkedExecution = activeHojeItems.filter((item) => !standaloneExecution.some((entry) => entry.id === item.id));
+
+  const longInactiveItems = items.filter((item) => {
+    if (item.status !== 'active' && item.status !== 'paused') return false;
+    if (item.due_date) return false;
+    const metadata = (item.metadata || {}) as Record<string, unknown>;
+    if (metadata.inbox_needs_revisit === true) return false;
+    const ageMs = Date.now() - new Date(item.updated_at || item.created_at).getTime();
+    return ageMs > 14 * 24 * 60 * 60 * 1000;
+  });
+
+  const attentionItems = [
+    ...hojeDomain.overdueItems,
+    ...postponedNeedingRevisit,
+    ...longInactiveItems,
+  ].filter((item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index);
+
+  function renderSimpleList(sectionItems: Item[], emptyLabel: string) {
+    if (sectionItems.length === 0) {
+      return <p className="text-sm text-[var(--text-secondary)]">{emptyLabel}</p>;
+    }
+
+    return (
+      <div className="space-y-2">
+        {sectionItems.slice(0, 5).map((item) => (
+          <div key={item.id} className="rounded-2xl bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+            <p className="font-medium text-[var(--text)]">{item.title}</p>
+            <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+          </div>
+        ))}
+        {sectionItems.length > 5 ? (
+          <p className="text-xs text-[var(--text-tertiary)]">+ {sectionItems.length - 5} itens adicionais</p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -65,6 +140,89 @@ export function RevisaoSemanalPage() {
         </div>
         <ProgressBar value={completionRatio} />
       </Card>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Adiados que precisam voltar</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Itens que saíram da Inbox como adiados, mas ainda carregam necessidade de revisão.</p>
+            </div>
+            <div className="rounded-[var(--radius-pill)] border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-1 text-sm font-semibold text-[var(--text)]">
+              {postponedNeedingRevisit.length}
+            </div>
+          </div>
+          {renderSimpleList(postponedNeedingRevisit, 'Nenhum adiado pendente de retomada agora.')}
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Execução solta em excesso</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Quando a execução sem direção explícita começa a pesar mais do que a execução conectada.</p>
+            </div>
+            <div className={`rounded-[var(--radius-pill)] border px-3 py-1 text-sm font-semibold ${standaloneExecution.length > directionLinkedExecution.length ? 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]' : 'border-[var(--accent-border)] bg-[var(--accent-soft)] text-[var(--accent)]'}`}>
+              {standaloneExecution.length} soltos · {directionLinkedExecution.length} ligados
+            </div>
+          </div>
+          <p className="text-sm text-[var(--text-secondary)]">
+            {standaloneExecution.length > directionLinkedExecution.length
+              ? 'A execução do dia está mais solta do que conectada à direção.'
+              : 'A execução ligada à direção ainda sustenta a maior parte do dia.'}
+          </p>
+          {renderSimpleList(standaloneExecution, 'Não há execução solta relevante no momento.')}
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card className="space-y-4 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Direção sem execução</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">O portfólio já mostra onde existe direção sem tração concreta em Fazer.</p>
+            </div>
+            <div className="rounded-[var(--radius-pill)] border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-1 text-sm font-semibold text-[var(--text)]">
+              {goalsWithoutExecution.length + projectsWithoutExecution.length + habitsWithoutExecution.length + inegociaveisWithoutReflection.length}
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Metas</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{goalsWithoutExecution.length}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">sem execução ativa</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Projetos</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{projectsWithoutExecution.length}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">sem próximos passos</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Hábitos</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{habitsWithoutExecution.length}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">sem reflexo em Hoje</p>
+            </div>
+            <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Inegociáveis</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{inegociaveisWithoutReflection.length}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">sem reflexo no dia</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="space-y-3 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Itens em atenção</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Riscos já conhecidos pelo sistema: atraso, inércia e adiamentos ainda sem volta.</p>
+            </div>
+            <div className="rounded-[var(--radius-pill)] border border-[var(--danger)]/25 bg-[var(--danger)]/10 px-3 py-1 text-sm font-semibold text-[var(--text)]">
+              {attentionItems.length}
+            </div>
+          </div>
+          {renderSimpleList(attentionItems, 'Nenhum item em atenção destacado agora.')}
+        </Card>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {links.map((link) => (

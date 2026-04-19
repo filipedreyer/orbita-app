@@ -17,6 +17,7 @@ export type FrequencyType = 'daily' | 'weekly' | 'monthly';
 export type GoalDirection = 'up' | 'stable' | 'down';
 export type InegociavelRuleType = 'bloco_tempo' | 'frequencia' | 'limite';
 export type CaptureType = 'inbox' | EntityType;
+export type CaptureOrigin = 'quick_capture' | 'structured';
 
 export interface HabitMetadata {
   frequency: FrequencyType;
@@ -42,6 +43,21 @@ export interface InegociavelMetadata {
   limite_horas?: number;
   dias_cumpridos_ultimos_7?: number;
   dias_cumpridos_ultimos_14?: number;
+}
+
+export interface FileLikeMetadata {
+  file_name?: string;
+  file_size?: number;
+  mime_type?: string;
+}
+
+export interface InboxAttachmentFields {
+  // Caminho explicito para anexos genericos no inbox. Estes campos sao opcionais
+  // para manter compatibilidade com o schema atual enquanto o backend nao expoe
+  // colunas dedicadas para attachment.
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_mime_type?: string | null;
 }
 
 export type ItemMetadata = HabitMetadata | RoutineMetadata | EventMetadata | InegociavelMetadata | Record<string, unknown>;
@@ -76,14 +92,22 @@ export interface SubItem {
   created_at: string;
 }
 
-export interface InboxItem {
+export interface InboxItem extends InboxAttachmentFields {
   id: string;
   user_id: string;
   text: string;
+  // Campo legado: hoje continua servindo como fallback para anexos no inbox,
+  // inclusive quando o anexo nao e imagem. Manter por compatibilidade.
   image_url: string | null;
-  ai_suggested_type: EntityType;
+  ai_suggested_type: EntityType | null;
   ai_suggested_tags: string | null;
   created_at: string;
+}
+
+export interface InboxDraft extends InboxAttachmentFields {
+  text: string;
+  // Mesmo comportamento legado do InboxItem.image_url.
+  image_url: string | null;
 }
 
 export interface HabitLog {
@@ -94,16 +118,19 @@ export interface HabitLog {
   created_at: string;
 }
 
+export interface RitualOrderSettings {
+  date: string;
+  ids: string[];
+}
+
 export interface UserSettings {
   homeScreen: 'today';
   theme: 'auto' | 'light' | 'dark';
   silenceStart: string;
   silenceEnd: string;
   weeklyReportDay: string;
-  ritualOrder?: {
-    date: string;
-    ids: string[];
-  } | null;
+  ritualOrder?: RitualOrderSettings | null;
+  [key: string]: unknown;
 }
 
 export interface UserProfile {
@@ -114,6 +141,11 @@ export interface UserProfile {
   created_at: string;
   updated_at: string;
 }
+
+export type ProfileSettingsRecord = UserSettings;
+export type EntityItem = Item;
+export type InboxEntity = InboxItem;
+export type EntityRecord = Item | InboxItem | SubItem | HabitLog;
 
 export const typeLabels: Record<EntityType, string> = {
   tarefa: 'Tarefa',

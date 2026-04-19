@@ -30,7 +30,7 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class:
-          'min-h-[240px] rounded-2xl border border-[var(--border)] bg-white px-4 py-4 outline-none [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_p.is-editor-empty:first-child::before]:pointer-events-none [&_p.is-editor-empty:first-child::before]:float-left [&_p.is-editor-empty:first-child::before]:h-0 [&_p.is-editor-empty:first-child::before]:text-[var(--text-tertiary)] [&_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
+          'min-h-[240px] rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] px-4 py-4 outline-none transition focus-within:border-[var(--accent)] focus-within:ring-[3px] focus-within:ring-[var(--focus-ring)] [&_h1]:text-3xl [&_h1]:font-bold [&_h2]:text-2xl [&_h2]:font-semibold [&_ol]:list-decimal [&_ol]:pl-5 [&_ul]:list-disc [&_ul]:pl-5 [&_p.is-editor-empty:first-child::before]:pointer-events-none [&_p.is-editor-empty:first-child::before]:float-left [&_p.is-editor-empty:first-child::before]:h-0 [&_p.is-editor-empty:first-child::before]:text-[var(--text-tertiary)] [&_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]',
       },
     },
   });

@@ -13,7 +13,8 @@ export function CardRow({
       type={onPress ? 'button' : undefined}
       onClick={onPress}
       className={clsx(
-        'flex w-full items-center gap-3 px-4 py-3 text-left',
+        'flex w-full items-center gap-3 rounded-[var(--radius-xl)] px-4 py-3 text-left transition',
+        onPress && 'hover:bg-[var(--surface-alt)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--focus-ring)]',
         !isLast && 'border-b border-[var(--border)]',
       )}
     >

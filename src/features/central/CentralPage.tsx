@@ -14,6 +14,7 @@ import { usePwa } from '../pwa/PwaProvider';
 import * as itemsService from '../../services/items';
 import * as profileService from '../../services/profile';
 import { useAuthStore, useDataStore } from '../../store';
+import type { ProfileSettingsRecord, UserSettings } from '../../lib/types';
 
 const centralSections = [
   { id: 'guia', label: 'Guia', icon: PlayCircle },
@@ -34,7 +35,7 @@ export function CentralPage() {
   const { showFeedback } = useActionFeedback();
   const pwa = usePwa();
   const [section, setSection] = useState<CentralSection>('guia');
-  const [settings, setSettings] = useState<Record<string, unknown>>({
+  const [settings, setSettings] = useState<ProfileSettingsRecord>({
     homeScreen: 'today',
     theme: 'auto',
     weeklyReportDay: 'monday',
@@ -138,7 +139,7 @@ export function CentralPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Central</p>
@@ -160,14 +161,16 @@ export function CentralPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 rounded-3xl border border-[var(--border)] bg-white p-2">
+      <Card className="p-2">
+        <div className="flex flex-wrap gap-2">
         {centralSections.map((entry) => (
           <Button key={entry.id} variant={section === entry.id ? 'primary' : 'ghost'} onClick={() => setSection(entry.id)}>
             <entry.icon className="h-4 w-4" />
             {entry.label}
           </Button>
         ))}
-      </div>
+        </div>
+      </Card>
 
       {section === 'guia' ? (
         <div className="space-y-4">
@@ -234,9 +237,9 @@ export function CentralPage() {
                 </div>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
-                <div className="rounded-2xl bg-[var(--surface-alt)] p-4"><p className="text-xs text-[var(--text-tertiary)]">Itens ativos</p><p className="mt-2 text-2xl font-bold">{supportStats.activeItems}</p></div>
-                <div className="rounded-2xl bg-[var(--surface-alt)] p-4"><p className="text-xs text-[var(--text-tertiary)]">Inbox</p><p className="mt-2 text-2xl font-bold">{supportStats.inbox}</p></div>
-                <div className="rounded-2xl bg-[var(--surface-alt)] p-4"><p className="text-xs text-[var(--text-tertiary)]">Ritual order</p><p className="mt-2 text-2xl font-bold">{supportStats.ritualOrder}</p></div>
+                <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Itens ativos</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[var(--text)]">{supportStats.activeItems}</p></div>
+                <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Inbox</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[var(--text)]">{supportStats.inbox}</p></div>
+                <div className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] p-4"><p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text-tertiary)]">Ritual order</p><p className="mt-2 text-2xl font-bold tracking-[-0.03em] text-[var(--text)]">{supportStats.ritualOrder}</p></div>
               </div>
             </Card>
           </div>
@@ -262,7 +265,7 @@ export function CentralPage() {
                   <select
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-sm"
                     value={String(settings.theme ?? 'auto')}
-                    onChange={(event) => setSettings((current) => ({ ...current, theme: event.target.value }))}
+                    onChange={(event) => setSettings((current) => ({ ...current, theme: event.target.value as UserSettings['theme'] }))}
                   >
                     <option value="auto">Auto</option>
                     <option value="light">Light</option>
@@ -274,7 +277,7 @@ export function CentralPage() {
                   <select
                     className="w-full rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-sm"
                     value={String(settings.homeScreen ?? 'today')}
-                    onChange={(event) => setSettings((current) => ({ ...current, homeScreen: event.target.value }))}
+                    onChange={(event) => setSettings((current) => ({ ...current, homeScreen: event.target.value as UserSettings['homeScreen'] }))}
                   >
                     <option value="today">Today</option>
                   </select>
