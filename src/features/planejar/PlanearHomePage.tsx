@@ -6,6 +6,7 @@ import { IAEntryPoints } from '../ia/IAEntryPoints';
 import { IAOnboarding } from '../ia/IAOnboarding';
 import { useIA } from '../ia/useIA';
 import { OnboardingChecklist } from '../onboarding/OnboardingChecklist';
+import { PlanOnboardingBuilder } from './PlanOnboardingBuilder';
 
 const cards = [
   { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direcao e resultados de medio prazo.' },
@@ -50,6 +51,8 @@ export function PlanearHomePage() {
           { title: 'Revisao', description: 'Use a revisao semanal para consolidar o portfolio.' },
         ]}
       />
+
+      <PlanOnboardingBuilder />
 
       <IAEntryPoints
         title="Leitura contextual de Planejar"

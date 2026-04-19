@@ -47,6 +47,19 @@ export interface IAOnboardingStep {
   done: boolean;
 }
 
+export type IAOnboardingSuggestionType = 'meta' | 'projeto' | 'habito' | 'inegociavel';
+
+export interface IAOnboardingSuggestion {
+  type: IAOnboardingSuggestionType;
+  title: string;
+  description?: string;
+  linkedTo?: string;
+}
+
+export interface IAOnboardingResponse {
+  suggestions: IAOnboardingSuggestion[];
+}
+
 export interface IAReadingResponse {
   reading: string;
 }
