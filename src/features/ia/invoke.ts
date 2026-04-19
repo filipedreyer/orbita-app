@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { IAReadingResponse } from './types';
+import type { IAReadingResponse, IAReportResponse } from './types';
 
 type AIInvokeBody = string | FormData | Record<string, unknown>;
 
@@ -27,4 +27,23 @@ export function isReadingResponse(data: unknown, minLength: number): data is IAR
   if (!data || typeof data !== 'object') return false;
   const record = data as Record<string, unknown>;
   return typeof record.reading === 'string' && record.reading.trim().length >= minLength;
+}
+
+export function isReportResponse(data: unknown): data is IAReportResponse {
+  if (!data || typeof data !== 'object') return false;
+  const record = data as Record<string, unknown>;
+  if (!Array.isArray(record.blocks) || record.blocks.length === 0 || record.blocks.length > 3) return false;
+
+  return record.blocks.every((block) => {
+    if (!block || typeof block !== 'object') return false;
+    const parsed = block as Record<string, unknown>;
+    const validType = parsed.type === 'status' || parsed.type === 'focus' || parsed.type === 'risk';
+    return (
+      validType &&
+      typeof parsed.title === 'string' &&
+      parsed.title.trim().length > 0 &&
+      typeof parsed.description === 'string' &&
+      parsed.description.trim().length > 0
+    );
+  });
 }

@@ -22,6 +22,18 @@ export interface IAReportDescriptor {
   highlights: string[];
 }
 
+export type IAReportBlockType = 'status' | 'focus' | 'risk';
+
+export interface IAReportBlock {
+  type: IAReportBlockType;
+  title: string;
+  description: string;
+}
+
+export interface IAReportResponse {
+  blocks: IAReportBlock[];
+}
+
 export interface IAChatMessage {
   id: string;
   role: 'assistant' | 'user';

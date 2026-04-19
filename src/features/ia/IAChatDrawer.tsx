@@ -1,7 +1,6 @@
 import { SendHorizontal } from 'lucide-react';
 import { Badge, BottomSheet, Button, Card, Input } from '../../components/ui';
 import type { IAActionDescriptor, IARouteContext } from './types';
-import { IASuggestion } from './IASuggestion';
 
 export function IAChatDrawer({
   visible,
@@ -11,8 +10,8 @@ export function IAChatDrawer({
   onDraftChange,
   onSend,
   context,
-  completedActions,
-  onRunAction,
+  completedActions: _completedActions,
+  onRunAction: _onRunAction,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -25,7 +24,7 @@ export function IAChatDrawer({
   onRunAction: (action: IAActionDescriptor) => void;
 }) {
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Leitura contextual">
+    <BottomSheet visible={visible} onClose={onClose} title="Chat contextual">
       <div className="space-y-4">
         <Card className="space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -58,10 +57,6 @@ export function IAChatDrawer({
             </div>
           ))}
         </div>
-
-        {context.suggestions[0] ? (
-          <IASuggestion suggestion={context.suggestions[0]} completedActions={completedActions} onRunAction={onRunAction} />
-        ) : null}
 
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Perguntar nesta superficie</p>

@@ -106,31 +106,11 @@ export function buildIAContext({
                 hoje.capacity.operationalHours < 2 ? 'warning' : 'support',
               ),
             ],
-      reports: isTimeline
-        ? [
-            report('fazer-relatorio-timeline', 'Timeline e dependencias', 'Resumo visual da tela de timeline atual.', [
-              `${hoje.focusItems.length} itens distribuidos na timeline`,
-              `${(hoje.capacity.totalHours - hoje.capacity.operationalHours).toFixed(1)}h ocupadas`,
-              `${hoje.blockedInegociaveis.length} conflitos com blocos fixos`,
-            ]),
-            report('fazer-relatorio-capacidade', 'Capacidade e conflitos', 'Leitura visual de excesso de carga e choque com blocos fixos.', [
-              `${hoje.capacity.operationalHours.toFixed(1)}h restantes`,
-              `${hoje.fixedInegociaveis.length} inegociaveis com horario`,
-              `${hoje.overdueItems.length} atrasados impactando a timeline`,
-            ]),
-          ]
-        : [
-            report('fazer-relatorio-dia', 'Leitura do dia', 'Resumo do foco, atraso e espaco operacional.', [
-              `${hoje.focusItems.length} itens no foco operacional`,
-              `${hoje.overdueItems.length} itens atrasados pressionando o dia`,
-              `${hoje.fixedInegociaveis.length} inegociaveis com horario fixo`,
-            ]),
-            report('fazer-relatorio-capacidade', 'Capacidade e conflitos', 'Leitura visual de excesso de carga e choque com blocos fixos.', [
-              `${(hoje.capacity.totalHours - hoje.capacity.operationalHours).toFixed(1)}h ocupadas`,
-              `${hoje.capacity.operationalHours.toFixed(1)}h restantes`,
-              `${hoje.blockedInegociaveis.length} conflitos com inegociaveis`,
-            ]),
-          ],
+      reports: isRitual
+        ? []
+        : isTimeline
+          ? [report('reportTimeline', 'Leitura da Timeline', 'Distribuicao de curto prazo e pressao entre dias proximos.', [])]
+          : [report('reportHoje', 'Leitura de Hoje', 'Balanceamento do dia, foco e risco imediato.', [])],
       chatMessages: [
         assistantMessage('fazer-msg-1', 'Posso ajudar a redistribuir o dia sem mexer no que o Ritual ja consolidou.'),
         assistantMessage('fazer-msg-2', 'Os mocks desta tela priorizam excesso de capacidade, inegociaveis e replanejamento simples.'),
@@ -188,31 +168,7 @@ export function buildIAContext({
                 'support',
               ),
             ],
-      reports: isCaixola
-        ? [
-            report('memoria-relatorio-caixola', 'Leitura da Caixola', 'Resumo visual de notas, diarios e material reutilizavel.', [
-              `${notes.length} notas disponiveis`,
-              `${diaries.length} diarios filtraveis`,
-              `${shortcuts.length} atalhos gerados a partir do acervo`,
-            ]),
-            report('memoria-relatorio-vinculos', 'Vinculos sugeridos', 'Sugestoes mockadas para relacionar texto a acao ou projeto.', [
-              'Notas com potencial de virar acao',
-              'Diarios com trechos reaproveitaveis',
-              'Espacos para ligacao com Planejar',
-            ]),
-          ]
-        : [
-            report('memoria-relatorio-inbox', 'Leitura da inbox', 'Resumo da fila de capturas esperando triagem.', [
-              `${inbox.length} capturas aguardando decisao`,
-              `${notes.length} notas disponiveis para vinculo`,
-              `${diaries.length} diarios recuperaveis`,
-            ]),
-            report('memoria-relatorio-recuperacao', 'Recuperacao e organizacao', 'Leitura do acervo para reuso e classificacao.', [
-              `${shortcuts.length} atalhos prontos para acesso rapido`,
-              `${notes.length - diaries.length} notas gerais`,
-              'Sugestoes visuais para mover texto para acao',
-            ]),
-          ],
+      reports: [],
       chatMessages: [
         assistantMessage('memoria-msg-1', 'Posso sugerir como classificar capturas e conectar notas ao restante do sistema.'),
         assistantMessage('memoria-msg-2', 'Nesta fase tudo permanece mockado e contextual ao acervo visivel da Memoria.'),
@@ -221,7 +177,6 @@ export function buildIAContext({
     };
   }
 
-  const doneGoals = portfolio.goals.filter((goal) => goal.status === 'done').length;
   const isMetas = pathname.includes('/metas');
   const isProjetos = pathname.includes('/projetos');
   const isHabitos = pathname.includes('/habitos');
@@ -301,30 +256,8 @@ export function buildIAContext({
                 ),
               ],
     reports: isRevisao
-      ? [
-          report('planejar-relatorio-revisao', 'Leitura para revisao semanal', 'Resumo simples para revisar coerencia do portfolio.', [
-            `${portfolio.weeklyReview.completedThisWeek} itens concluidos no periodo`,
-            `${portfolio.weeklyReview.overdueOpenCount} tarefas atrasadas em aberto`,
-            `${portfolio.inegociaveis.length} inegociaveis protegendo a agenda`,
-          ]),
-          report('planejar-relatorio-portfolio', 'Leitura do portfolio', 'Resumo visual das frentes ativas de Planejar.', [
-            `${portfolio.goals.length} metas ativas (${doneGoals} concluidas)`,
-            `${portfolio.projects.length} projetos ativos`,
-            `${portfolio.habits.length} habitos em acompanhamento`,
-          ]),
-        ]
-      : [
-          report('planejar-relatorio-portfolio', 'Leitura do portfolio', 'Resumo visual das frentes ativas de Planejar.', [
-            `${portfolio.goals.length} metas ativas (${doneGoals} concluidas)`,
-            `${portfolio.projects.length} projetos ativos`,
-            `${portfolio.habits.length} habitos em acompanhamento`,
-          ]),
-          report('planejar-relatorio-revisao', 'Leitura para revisao semanal', 'Resumo simples para revisar coerencia do portfolio.', [
-            `${portfolio.weeklyReview.completedThisWeek} itens concluidos no periodo`,
-            `${portfolio.weeklyReview.overdueOpenCount} tarefas atrasadas em aberto`,
-            `${portfolio.inegociaveis.length} inegociaveis protegendo a agenda`,
-          ]),
-        ],
+      ? [report('reportRevisao', 'Leitura da Revisao Semanal', 'Padroes da semana, acumulacao e coerencia mais ampla.', [])]
+      : [report('reportPlanejar', 'Leitura de Planejar', 'Estrutura atual do portfolio e seus desequilibrios.', [])],
     chatMessages: [
       assistantMessage('planejar-msg-1', 'Posso explicar o portfolio atual e propor ajustes visuais antes de qualquer automacao real.'),
       assistantMessage('planejar-msg-2', 'Os mocks desta area leem metas, projetos, habitos e inegociaveis sem acoplar ao backend de IA.'),

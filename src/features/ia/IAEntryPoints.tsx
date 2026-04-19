@@ -13,19 +13,22 @@ export function IAEntryPoints({
   description: string;
   compact?: boolean;
 }) {
-  const { openChat, openReports } = useIA();
+  const { openChat, openReports, routeContext } = useIA();
+  const hasReports = routeContext.reports.length > 0;
 
   if (compact) {
     return (
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={openChat}>
           <Bot className="h-4 w-4" />
-          Abrir leitura
+          Abrir chat
         </Button>
-        <Button variant="ghost" onClick={openReports}>
-          <FileText className="h-4 w-4" />
-          Ver relatorios
-        </Button>
+        {hasReports ? (
+          <Button variant="ghost" onClick={openReports}>
+            <FileText className="h-4 w-4" />
+            Ver relatorios
+          </Button>
+        ) : null}
       </div>
     );
   }
@@ -40,12 +43,14 @@ export function IAEntryPoints({
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={openChat}>
           <Bot className="h-4 w-4" />
-          Abrir leitura
+          Abrir chat
         </Button>
-        <Button variant="ghost" onClick={openReports}>
-          <FileText className="h-4 w-4" />
-          Ver relatorios
-        </Button>
+        {hasReports ? (
+          <Button variant="ghost" onClick={openReports}>
+            <FileText className="h-4 w-4" />
+            Ver relatorios
+          </Button>
+        ) : null}
       </div>
     </Card>
   );
