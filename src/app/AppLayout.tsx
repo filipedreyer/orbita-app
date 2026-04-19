@@ -26,10 +26,10 @@ export function AppLayout({ children }: PropsWithChildren) {
             <Button variant="ghost" size="icon" ariaLabel="Buscar">
               <Search className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" ariaLabel="Relatorios de IA" onClick={openReports}>
+            <Button variant="ghost" size="icon" ariaLabel="Relatorios contextuais" onClick={openReports}>
               <FileText className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" ariaLabel="IA mockada" onClick={openChat}>
+            <Button variant="ghost" size="icon" ariaLabel="Leitura contextual" onClick={openChat}>
               <Bot className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" ariaLabel="Central" onClick={() => navigate(routes.central)}>

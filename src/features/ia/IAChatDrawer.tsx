@@ -25,12 +25,13 @@ export function IAChatDrawer({
   onRunAction: (action: IAActionDescriptor) => void;
 }) {
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="IA Chat">
+    <BottomSheet visible={visible} onClose={onClose} title="Leitura contextual">
       <div className="space-y-4">
         <Card className="space-y-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[var(--text)]">{context.title}</p>
+              <p className="text-sm font-semibold text-[var(--text)]">{context.routeLabel}</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{context.title}</p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">{context.subtitle}</p>
             </div>
             <Button variant="secondary" onClick={onOpenReports}>
@@ -45,6 +46,7 @@ export function IAChatDrawer({
         </Card>
 
         <div className="space-y-3">
+          {/* TODO: CLAUDE — conectar respostas contextuais reais por superficie sem abrir chat generico. */}
           {context.chatMessages.map((message) => (
             <div
               key={message.id}
@@ -62,7 +64,7 @@ export function IAChatDrawer({
         ) : null}
 
         <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Perguntar nesta tela</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Perguntar nesta superficie</p>
           <div className="flex gap-2">
             <Input value={draftMessage} onChange={(event) => onDraftChange(event.target.value)} placeholder={`Perguntar sobre ${context.routeLabel.toLowerCase()}...`} />
             <Button size="icon" ariaLabel="Enviar mock de IA" onClick={onSend}>

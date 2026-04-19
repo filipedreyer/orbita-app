@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Card, ProgressBar } from '../../components/ui';
 import { routes } from '../../app/routes';
+import { IAEntryPoints } from '../ia/IAEntryPoints';
 import { readSystemReviewWithAI } from '../ia/reviewSystem';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
@@ -159,6 +160,11 @@ export function RevisaoSemanalPage() {
           </div>
         </div>
       </Card>
+
+      <IAEntryPoints
+        title="Leitura contextual da Revisao"
+        description="Abre os drawers de leitura e relatorios desta camada, sem ampliar a Revisao para um assistente generico."
+      />
 
       {systemReading ? (
         <Card className="space-y-3 p-4">

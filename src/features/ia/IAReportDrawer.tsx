@@ -11,14 +11,15 @@ export function IAReportDrawer({
   context: IARouteContext;
 }) {
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Relatorios IA">
+    <BottomSheet visible={visible} onClose={onClose} title="Relatorios contextuais">
       <div className="space-y-4">
         <div>
           <p className="text-sm font-semibold text-[var(--text)]">{context.routeLabel}</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Relatorios mockados da tela atual, variando por contexto de uso.</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Leituras curtas desta superficie, variando pelo contexto ja conhecido do produto.</p>
         </div>
 
         <div className="space-y-3">
+          {/* TODO: CLAUDE — conectar relatorios reais por superficie usando helpers estreitos, sem painel generico. */}
           {context.reports.map((report) => (
             <Card key={report.id} className="space-y-3 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

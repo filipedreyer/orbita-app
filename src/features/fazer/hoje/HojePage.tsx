@@ -6,6 +6,7 @@ import { Card } from '../../../components/ui/Card';
 import { CreateLauncherModal } from '../../capture/CreateLauncherModal';
 import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
 import { IAActionButton } from '../../ia/IAActionButton';
+import { IAEntryPoints } from '../../ia/IAEntryPoints';
 import { IASuggestion } from '../../ia/IASuggestion';
 import { useIA } from '../../ia/useIA';
 import {
@@ -244,6 +245,11 @@ export function HojePage() {
       {routeContext.area === 'fazer' && routeContext.suggestions[0] ? (
         <IASuggestion suggestion={routeContext.suggestions[0]} completedActions={completedActions} onRunAction={triggerAction} />
       ) : null}
+      <IAEntryPoints
+        compact
+        title="Leitura contextual de Hoje"
+        description="Abre os drawers contextuais ja preparados para execucao, foco e risco do dia."
+      />
       <InegociavelCapacityBlock items={projection.sections.inegociaveis} />
 
       <Card className="space-y-4 p-4">

@@ -2,6 +2,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { routes } from '../../app/routes';
+import { IAEntryPoints } from '../ia/IAEntryPoints';
 import { IAOnboarding } from '../ia/IAOnboarding';
 import { useIA } from '../ia/useIA';
 import { OnboardingChecklist } from '../onboarding/OnboardingChecklist';
@@ -48,6 +49,11 @@ export function PlanearHomePage() {
           { title: 'Projetos', description: 'Traga as frentes reais que movem as metas.' },
           { title: 'Revisao', description: 'Use a revisao semanal para consolidar o portfolio.' },
         ]}
+      />
+
+      <IAEntryPoints
+        title="Leitura contextual de Planejar"
+        description="Abre os drawers contextuais do portfolio atual, com foco em leitura e relatorios do que ja existe na camada Planejar."
       />
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
