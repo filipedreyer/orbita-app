@@ -3,22 +3,20 @@ import { createContext, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore, useDataStore } from '../../store';
 import { IAChatDrawer } from './IAChatDrawer';
+import { orchestrateChatMessage } from './chat';
 import { IAContextBuilder } from './IAContextBuilder';
 import { IAReportDrawer } from './IAReportDrawer';
 import { analyzeTextWithAI } from './analyzeText';
-import type { IAActionDescriptor, IAContextValue, IAChatMessage, IATextAnalysisResult, IATextAnalysisSuggestion } from './types';
+import type {
+  IAActionDescriptor,
+  IAChatAction,
+  IAChatMessage,
+  IAContextValue,
+  IATextAnalysisResult,
+  IATextAnalysisSuggestion,
+} from './types';
 
 export const IAContext = createContext<IAContextValue | null>(null);
-
-function buildMockReply(area: string, message: string): string {
-  if (area === 'fazer') {
-    return `Mock de IA: para "${message}", eu priorizaria reduzir atrito no dia antes de adicionar mais carga.`;
-  }
-  if (area === 'memoria') {
-    return `Mock de IA: para "${message}", eu sugeriria classificar, vincular e transformar texto em acao aos poucos.`;
-  }
-  return `Mock de IA: para "${message}", eu revisaria metas, projetos e protecoes do portfolio antes de qualquer ajuste maior.`;
-}
 
 function removeAnalysisEntry(
   current: Record<string, IATextAnalysisResult | undefined>,
@@ -55,6 +53,12 @@ function appendLocalMessages(
   };
 }
 
+function isChatAction(action: IAActionDescriptor | IAChatAction): action is IAChatAction {
+  return ['confirm', 'open', 'review', 'create', 'defer', 'keep', 'highlight', 'link'].includes(
+    (action as IAChatAction).intent,
+  );
+}
+
 export function IAProvider({ children }: PropsWithChildren) {
   const location = useLocation();
   const session = useAuthStore((state) => state.session);
@@ -88,30 +92,51 @@ export function IAProvider({ children }: PropsWithChildren) {
           closeChat: () => setChatOpen(false),
           openReports: () => setReportOpen(true),
           closeReports: () => setReportOpen(false),
-          sendMessage: () => {
+          sendMessage: async () => {
             if (!draftMessage.trim()) return;
 
-            // TODO: CLAUDE — conectar com Edge Function ia-chat
-            // Input esperado: { pathname, contextKey, message, visibleContext }
-            // Output esperado: { reply, suggestedActions, reportHints }
+            const currentDraft = draftMessage.trim();
             const userMessage: IAChatMessage = {
               id: `${routeContext.contextKey}-user-${Date.now()}`,
               role: 'user',
-              content: draftMessage.trim(),
+              content: currentDraft,
             };
+
+            setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [userMessage]));
+            setDraftMessage('');
+
+            const response = await orchestrateChatMessage(currentDraft, {
+              pathname: location.pathname,
+              routeContext,
+              items,
+              inbox,
+            });
+
             const assistantReply: IAChatMessage = {
               id: `${routeContext.contextKey}-assistant-${Date.now()}`,
               role: 'assistant',
-              content: buildMockReply(routeContext.area, draftMessage.trim()),
+              content: response.content,
+              response,
             };
-            setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [userMessage, assistantReply]));
-            setDraftMessage('');
+
+            setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [assistantReply]));
           },
-          triggerAction: (action: IAActionDescriptor) => {
-            // TODO: CLAUDE — conectar com Edge Function ia-actions
-            // Input esperado: { pathname, actionId, intent, contextKey }
-            // Output esperado: { applied: boolean, summary: string }
+          triggerAction: (action: IAActionDescriptor | IAChatAction) => {
             setCompletedActions((current) => ({ ...current, [action.id]: true }));
+
+            if (isChatAction(action)) {
+              const assistantReply: IAChatMessage = {
+                id: `${routeContext.contextKey}-assistant-action-${Date.now()}`,
+                role: 'assistant',
+                content: `Proximo passo preparado: ${action.label.toLowerCase()}. Nada foi executado ainda.`,
+                response: {
+                  type: 'action',
+                  content: `Proximo passo preparado: ${action.label.toLowerCase()}. Nada foi executado ainda.`,
+                  actions: [],
+                },
+              };
+              setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [assistantReply]));
+            }
           },
           analyzeText: async (sourceId: string, _sourceLabel: string, text: string) => {
             const normalizedText = text.trim();
@@ -121,7 +146,7 @@ export function IAProvider({ children }: PropsWithChildren) {
               return;
             }
 
-            // TODO: CLAUDE — conectar com Edge Function ia-analyze-text
+            // TODO: CLAUDE � conectar com Edge Function ia-analyze-text
             // Input esperado: { text }
             // Output esperado: { suggestions: [{ type, title, confidence }] }
             const result = await analyzeTextWithAI({ text: normalizedText });

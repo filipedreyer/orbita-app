@@ -38,6 +38,32 @@ export interface IAChatMessage {
   id: string;
   role: 'assistant' | 'user';
   content: string;
+  response?: IAChatResponse;
+}
+
+export type IAChatIntent = 'reading' | 'suggestion' | 'report' | 'action';
+
+export type IAChatActionIntent =
+  | 'confirm'
+  | 'open'
+  | 'review'
+  | 'create'
+  | 'defer'
+  | 'keep'
+  | 'highlight'
+  | 'link';
+
+export interface IAChatAction {
+  id: string;
+  label: string;
+  intent: IAChatActionIntent;
+  payload?: Record<string, unknown>;
+}
+
+export interface IAChatResponse {
+  type: IAChatIntent;
+  content: string;
+  actions?: IAChatAction[];
 }
 
 export interface IAOnboardingStep {
@@ -112,8 +138,8 @@ export interface IAContextValue {
   closeChat: () => void;
   openReports: () => void;
   closeReports: () => void;
-  sendMessage: () => void;
-  triggerAction: (action: IAActionDescriptor) => void;
+  sendMessage: () => Promise<void>;
+  triggerAction: (action: IAActionDescriptor | IAChatAction) => void;
   analyzeText: (sourceId: string, sourceLabel: string, text: string) => Promise<void>;
   createFromAnalysis: (sourceId: string, suggestion: IATextAnalysisSuggestion) => Promise<void>;
   ignoreAnalysisSuggestion: (sourceId: string, suggestionTitle: string) => void;
