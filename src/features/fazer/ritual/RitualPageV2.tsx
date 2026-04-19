@@ -6,10 +6,15 @@ import { motion } from 'framer-motion';
 import { GripVertical, Lock, MoveUpRight, Sparkles, TriangleAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../app/routes';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { CardRow } from '../../../components/ui/CardRow';
+import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
+import { IASuggestCards } from '../../ia/IASuggestCards';
 import { readRitualWithAI, type RitualReadPayload } from '../../ia/ritual';
+import { buildSuggestDayPayload, suggestDayWithAI } from '../../ia/suggest';
+import type { IASuggestResult, IASuggestionItem } from '../../ia/types';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useHojeProjection, useRitualDomain } from '../../../store/fazer';
@@ -20,6 +25,12 @@ const LONG_INACTIVITY_DAYS = 14;
 function isOlderThanDays(timestamp: string, days: number) {
   const ageMs = Date.now() - new Date(timestamp).getTime();
   return ageMs > days * 24 * 60 * 60 * 1000;
+}
+
+function getNextDay(date: string) {
+  const base = new Date(`${date}T12:00:00`);
+  base.setDate(base.getDate() + 1);
+  return base.toISOString().slice(0, 10);
 }
 
 function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
@@ -94,10 +105,16 @@ export function RitualPageV2() {
   const items = useDataStore((state) => state.items);
   const ritualOrder = useDataStore((state) => state.ritualOrder);
   const setRitualOrder = useDataStore((state) => state.setRitualOrder);
+  const rescheduleItem = useDataStore((state) => state.rescheduleItem);
+  const updateItem = useDataStore((state) => state.updateItem);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
+  const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showOrdering, setShowOrdering] = useState(false);
   const [ritualReading, setRitualReading] = useState<string | null>(null);
+  const [capacitySuggestions, setCapacitySuggestions] = useState<IASuggestResult | null>(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const { showFeedback } = useActionFeedback();
 
   useEffect(() => {
     const current = ritualOrder.join('|');
@@ -137,7 +154,11 @@ export function RitualPageV2() {
     return { agora, cabeHoje, atencao, revisitItems };
   }, [domain.overdueItems, domain.referenceDate, items, projection.sections.focusItems]);
 
-  const capacitySignal = useMemo(() => {
+  const capacitySignal = useMemo<{
+    label: string;
+    description: string;
+    tone: 'balanced' | 'loaded' | 'overloaded';
+  }>(() => {
     const count = executionZones.agora.length;
 
     if (count <= 3) {
@@ -212,6 +233,45 @@ export function RitualPageV2() {
     ],
   );
 
+  const suggestPayload = useMemo(
+    () =>
+      buildSuggestDayPayload({
+        items: projection.sections.focusItems,
+        capacitySignal: capacitySignal.tone,
+        agoraCount: executionZones.agora.length,
+        cabeCount: executionZones.cabeHoje.length,
+        referenceDate: domain.referenceDate,
+        fixedInegociaveis: domain.fixedInegociaveis,
+        capacityOnlyInegociaveis: domain.capacityOnlyInegociaveis,
+        blockedInegociaveis: domain.blockedInegociaveis,
+        linkedResolver: (item) => getExecutionLinkState(item, new Map(items.map((entry) => [entry.id, entry]))),
+      }),
+    [
+      capacitySignal.tone,
+      domain.blockedInegociaveis,
+      domain.capacityOnlyInegociaveis,
+      domain.fixedInegociaveis,
+      domain.referenceDate,
+      executionZones.agora.length,
+      executionZones.cabeHoje.length,
+      items,
+      projection.sections.focusItems,
+    ],
+  );
+
+  const suggestedItemsById = useMemo(
+    () => new Map(projection.sections.focusItems.map((item) => [item.id, item])),
+    [projection.sections.focusItems],
+  );
+
+  const visibleCapacitySuggestions = useMemo(() => {
+    if (!capacitySuggestions) return null;
+    return {
+      ...capacitySuggestions,
+      suggestions: capacitySuggestions.suggestions.filter((suggestion) => !dismissedSuggestionIds.includes(suggestion.itemId)),
+    };
+  }, [capacitySuggestions, dismissedSuggestionIds]);
+
   useEffect(() => {
     let cancelled = false;
     setRitualReading(null);
@@ -229,6 +289,25 @@ export function RitualPageV2() {
       cancelled = true;
     };
   }, [ritualPayload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setCapacitySuggestions(null);
+    setDismissedSuggestionIds([]);
+
+    async function loadCapacitySuggestions() {
+      const result = await suggestDayWithAI(suggestPayload);
+      if (!cancelled && result) {
+        setCapacitySuggestions(result);
+      }
+    }
+
+    void loadCapacitySuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestPayload]);
 
   const orderedItems = useMemo(() => {
     const rank = new Map(ritualOrder.map((id, index) => [id, index]));
@@ -253,6 +332,47 @@ export function RitualPageV2() {
   }
 
   const activeItem = sortableItems.find((item) => item.id === activeItemId) ?? null;
+
+  function dismissSuggestion(suggestion: IASuggestionItem) {
+    setDismissedSuggestionIds((current) => (current.includes(suggestion.itemId) ? current : [...current, suggestion.itemId]));
+  }
+
+  function handleIgnoreSuggestion(suggestion: IASuggestionItem) {
+    dismissSuggestion(suggestion);
+  }
+
+  async function handleApplySuggestion(suggestion: IASuggestionItem) {
+    const item = suggestedItemsById.get(suggestion.itemId);
+    if (!item) return;
+
+    if (suggestion.type === 'defer') {
+      const previousDueDate = item.due_date;
+      const previousRescheduleCount = item.reschedule_count;
+      const nextDate = getNextDay(domain.referenceDate);
+      await rescheduleItem(item.id, nextDate);
+      dismissSuggestion(suggestion);
+      showFeedback(`${item.title} adiado para ${nextDate}.`, {
+        undoLabel: 'Desfazer',
+        onUndo: () => {
+          void updateItem(item.id, {
+            due_date: previousDueDate,
+            reschedule_count: previousRescheduleCount,
+          });
+        },
+      });
+      return;
+    }
+
+    if (suggestion.type === 'highlight') {
+      setSelectedItem(item);
+      dismissSuggestion(suggestion);
+      showFeedback(`${item.title} destacado para leitura antes de entrar em Hoje.`);
+      return;
+    }
+
+    dismissSuggestion(suggestion);
+    showFeedback(`${item.title} mantido como parte valida do desenho do dia.`);
+  }
 
   return (
     <div className="space-y-4">
@@ -327,6 +447,16 @@ export function RitualPageV2() {
             <br />
             Cabe hoje: <span className="font-semibold text-[var(--text)]">{executionZones.cabeHoje.length}</span>
           </div>
+          {visibleCapacitySuggestions && visibleCapacitySuggestions.suggestions.length > 0 ? (
+            <IASuggestCards
+              title="Intervencoes pequenas para destravar o dia"
+              summary={visibleCapacitySuggestions.summary}
+              result={visibleCapacitySuggestions}
+              itemsById={suggestedItemsById}
+              onApply={handleApplySuggestion}
+              onIgnore={handleIgnoreSuggestion}
+            />
+          ) : null}
         </Card>
 
         <Card className="space-y-3 p-4">
@@ -440,6 +570,15 @@ export function RitualPageV2() {
             </div>
           </div>
         </Card>
+      ) : null}
+
+      {selectedItem ? (
+        <EntitySheetWrapper
+          item={selectedItem}
+          visible={!!selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onEdit={() => setSelectedItem(null)}
+        />
       ) : null}
     </div>
   );

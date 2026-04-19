@@ -39,6 +39,19 @@ export interface IAReadingResponse {
   reading: string;
 }
 
+export type IASuggestType = 'defer' | 'keep' | 'highlight';
+
+export interface IASuggestionItem {
+  type: IASuggestType;
+  itemId: string;
+  reason: string;
+}
+
+export interface IASuggestResult {
+  suggestions: IASuggestionItem[];
+  summary: string;
+}
+
 export interface IATextAnalysisSuggestion {
   type: 'tarefa' | 'lembrete' | 'ideia';
   title: string;

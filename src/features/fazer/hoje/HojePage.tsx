@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus, Sparkles, X } from 'lucide-react';
 import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
 import { Button } from '../../../components/ui/Button';
@@ -7,7 +7,9 @@ import { CreateLauncherModal } from '../../capture/CreateLauncherModal';
 import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
 import { IAActionButton } from '../../ia/IAActionButton';
 import { IAEntryPoints } from '../../ia/IAEntryPoints';
+import { IASuggestCards } from '../../ia/IASuggestCards';
 import { IASuggestion } from '../../ia/IASuggestion';
+import { buildSuggestDayPayload, suggestDayWithAI } from '../../ia/suggest';
 import { useIA } from '../../ia/useIA';
 import {
   READ_TODAY_TIMEOUT_MS,
@@ -21,6 +23,7 @@ import { today } from '../../../lib/dates';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useHojeDomain, useHojeProjection } from '../../../store/fazer';
+import type { IASuggestResult, IASuggestionItem } from '../../ia/types';
 import { CompletedSection } from './CompletedSection';
 import { DayHeader } from './DayHeader';
 import { DayList } from './DayList';
@@ -34,6 +37,12 @@ function isOlderThanDays(timestamp: string, days: number) {
   return ageMs > days * 24 * 60 * 60 * 1000;
 }
 
+function getNextDay(date: string) {
+  const base = new Date(`${date}T12:00:00`);
+  base.setDate(base.getDate() + 1);
+  return base.toISOString().slice(0, 10);
+}
+
 export function HojePage() {
   const projection = useHojeProjection();
   const domain = useHojeDomain();
@@ -41,12 +50,15 @@ export function HojePage() {
   const completeItem = useDataStore((state) => state.completeItem);
   const checkHabit = useDataStore((state) => state.checkHabit);
   const updateItem = useDataStore((state) => state.updateItem);
+  const rescheduleItem = useDataStore((state) => state.rescheduleItem);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [todayReadingOpen, setTodayReadingOpen] = useState(false);
   const [todayReading, setTodayReading] = useState('');
   const [todayReadingStatus, setTodayReadingStatus] = useState<TodayReadStatus>('idle');
   const [todayReadingMessage, setTodayReadingMessage] = useState('');
+  const [daySuggestions, setDaySuggestions] = useState<IASuggestResult | null>(null);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
   const { routeContext, completedActions, triggerAction } = useIA();
   const { showFeedback } = useActionFeedback();
   const referenceDate = today();
@@ -189,6 +201,105 @@ export function HojePage() {
     };
   }, [executionLinkState, projection.sections.focusItems]);
 
+  const suggestPayload = useMemo(
+    () =>
+      buildSuggestDayPayload({
+        items: projection.sections.focusItems,
+        capacitySignal: capacitySignal.tone,
+        agoraCount: executionZones.agora.length,
+        cabeCount: executionZones.cabeHoje.length,
+        referenceDate,
+        fixedInegociaveis: domain.fixedInegociaveis,
+        capacityOnlyInegociaveis: domain.capacityOnlyInegociaveis,
+        blockedInegociaveis: domain.blockedInegociaveis,
+        linkedResolver: executionLinkState,
+      }),
+    [
+      capacitySignal.tone,
+      domain.blockedInegociaveis,
+      domain.capacityOnlyInegociaveis,
+      domain.fixedInegociaveis,
+      executionLinkState,
+      executionZones.agora.length,
+      executionZones.cabeHoje.length,
+      projection.sections.focusItems,
+      referenceDate,
+    ],
+  );
+
+  const suggestedItemsById = useMemo(
+    () => new Map(projection.sections.focusItems.map((item) => [item.id, item])),
+    [projection.sections.focusItems],
+  );
+
+  const visibleDaySuggestions = useMemo(() => {
+    if (!daySuggestions) return null;
+    return {
+      ...daySuggestions,
+      suggestions: daySuggestions.suggestions.filter((suggestion) => !dismissedSuggestionIds.includes(suggestion.itemId)),
+    };
+  }, [daySuggestions, dismissedSuggestionIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setDaySuggestions(null);
+    setDismissedSuggestionIds([]);
+
+    async function loadSuggestions() {
+      const result = await suggestDayWithAI(suggestPayload);
+      if (!cancelled && result) {
+        setDaySuggestions(result);
+      }
+    }
+
+    void loadSuggestions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [suggestPayload]);
+
+  function dismissSuggestion(suggestion: IASuggestionItem) {
+    setDismissedSuggestionIds((current) => (current.includes(suggestion.itemId) ? current : [...current, suggestion.itemId]));
+  }
+
+  function handleIgnoreSuggestion(suggestion: IASuggestionItem) {
+    dismissSuggestion(suggestion);
+  }
+
+  async function handleApplySuggestion(suggestion: IASuggestionItem) {
+    const item = suggestedItemsById.get(suggestion.itemId);
+    if (!item) return;
+
+    if (suggestion.type === 'defer') {
+      const previousDueDate = item.due_date;
+      const previousRescheduleCount = item.reschedule_count;
+      const nextDate = getNextDay(referenceDate);
+      await rescheduleItem(item.id, nextDate);
+      dismissSuggestion(suggestion);
+      showFeedback(`${item.title} adiado para ${nextDate}.`, {
+        undoLabel: 'Desfazer',
+        onUndo: () => {
+          void updateItem(item.id, {
+            due_date: previousDueDate,
+            reschedule_count: previousRescheduleCount,
+          });
+        },
+      });
+      return;
+    }
+
+    if (suggestion.type === 'highlight') {
+      setSelectedItem(item);
+      dismissSuggestion(suggestion);
+      showFeedback(`${item.title} destacado para leitura imediata.`);
+      return;
+    }
+
+    dismissSuggestion(suggestion);
+    showFeedback(`${item.title} mantido no plano de hoje.`);
+  }
+
   async function handleComplete(item: Item) {
     if (item.type === 'habito' || item.type === 'rotina') {
       await checkHabit(item.id);
@@ -244,6 +355,16 @@ export function HojePage() {
       <ReminderBanner reminders={projection.sections.reminders} />
       {routeContext.area === 'fazer' && routeContext.suggestions[0] ? (
         <IASuggestion suggestion={routeContext.suggestions[0]} completedActions={completedActions} onRunAction={triggerAction} />
+      ) : null}
+      {visibleDaySuggestions && visibleDaySuggestions.suggestions.length > 0 ? (
+        <IASuggestCards
+          title="Sugestoes do dia"
+          summary={visibleDaySuggestions.summary}
+          result={visibleDaySuggestions}
+          itemsById={suggestedItemsById}
+          onApply={handleApplySuggestion}
+          onIgnore={handleIgnoreSuggestion}
+        />
       ) : null}
       <IAEntryPoints
         compact
