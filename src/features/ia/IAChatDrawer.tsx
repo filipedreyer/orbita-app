@@ -66,7 +66,7 @@ export function IAChatDrawer({
                       onClick={() => onRunAction(action)}
                       disabled={completedActions[action.id]}
                     >
-                      {completedActions[action.id] ? `${action.label} preparado` : action.label}
+                      {completedActions[action.id] ? 'Preparado' : action.label}
                     </Button>
                   ))}
                 </div>

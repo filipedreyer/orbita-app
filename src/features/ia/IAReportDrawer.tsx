@@ -212,6 +212,10 @@ export function IAReportDrawer({
               </Card>
             ))}
           </div>
+        ) : activeReport ? (
+          <Card className="p-4">
+            <p className="text-sm text-[var(--text-secondary)]">Relatorio indisponivel agora.</p>
+          </Card>
         ) : null}
       </div>
     </BottomSheet>
