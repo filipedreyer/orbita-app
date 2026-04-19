@@ -3,12 +3,13 @@ import { DragOverlay, DndContext, PointerSensor, closestCenter, useSensor, useSe
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { motion } from 'framer-motion';
-import { GripVertical, Lock, MoveUpRight, TriangleAlert } from 'lucide-react';
+import { GripVertical, Lock, MoveUpRight, Sparkles, TriangleAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../app/routes';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { CardRow } from '../../../components/ui/CardRow';
+import { readRitualWithAI, type RitualReadPayload } from '../../ia/ritual';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useHojeProjection, useRitualDomain } from '../../../store/fazer';
@@ -95,6 +96,7 @@ export function RitualPageV2() {
   const setRitualOrder = useDataStore((state) => state.setRitualOrder);
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [showOrdering, setShowOrdering] = useState(false);
+  const [ritualReading, setRitualReading] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
@@ -161,6 +163,12 @@ export function RitualPageV2() {
     };
   }, [executionZones.agora.length]);
 
+  const ritualCapacitySignal = useMemo<RitualReadPayload['capacity']['signal']>(() => {
+    if (capacitySignal.tone === 'overloaded') return 'overloaded';
+    if (capacitySignal.tone === 'loaded') return 'loaded';
+    return 'balanced';
+  }, [capacitySignal.tone]);
+
   const directionSummary = useMemo(() => {
     const itemsById = new Map(items.map((item) => [item.id, item]));
     const linkedCount = projection.sections.focusItems.filter((item) => getExecutionLinkState(item, itemsById).linked).length;
@@ -168,6 +176,59 @@ export function RitualPageV2() {
 
     return { linkedCount, standaloneCount };
   }, [items, projection.sections.focusItems]);
+
+  const staleCount = useMemo(() => {
+    return executionZones.atencao.filter((item) => {
+      if (domain.overdueItems.some((entry) => entry.id === item.id)) return false;
+      if (executionZones.revisitItems.some((entry) => entry.id === item.id)) return false;
+      return true;
+    }).length;
+  }, [domain.overdueItems, executionZones.atencao, executionZones.revisitItems]);
+
+  const ritualPayload = useMemo<RitualReadPayload>(
+    () => ({
+      risk: {
+        overdueCount: domain.overdueItems.length,
+        revisitCount: executionZones.revisitItems.length,
+        staleCount,
+      },
+      capacity: {
+        signal: ritualCapacitySignal,
+        agoraCount: executionZones.agora.length,
+      },
+      direction: {
+        linkedCount: directionSummary.linkedCount,
+        standaloneCount: directionSummary.standaloneCount,
+      },
+    }),
+    [
+      directionSummary.linkedCount,
+      directionSummary.standaloneCount,
+      domain.overdueItems.length,
+      executionZones.agora.length,
+      executionZones.revisitItems.length,
+      ritualCapacitySignal,
+      staleCount,
+    ],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setRitualReading(null);
+
+    async function loadRitualReading() {
+      const reading = await readRitualWithAI(ritualPayload);
+      if (!cancelled && reading) {
+        setRitualReading(reading);
+      }
+    }
+
+    void loadRitualReading();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ritualPayload]);
 
   const orderedItems = useMemo(() => {
     const rank = new Map(ritualOrder.map((id, index) => [id, index]));
@@ -209,6 +270,20 @@ export function RitualPageV2() {
           Leia estes tres sinais como uma moldura breve do dia. O objetivo aqui nao e executar nem revisar tudo, e comecar com nocao de risco, ritmo e alinhamento.
         </p>
       </Card>
+
+      {ritualReading ? (
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent)]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Leitura de abertura</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{ritualReading}</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="space-y-3 p-4">

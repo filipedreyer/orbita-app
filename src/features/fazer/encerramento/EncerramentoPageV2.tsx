@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { CheckCircle2, Clock3, MoonStar, TriangleAlert } from 'lucide-react';
+import { CheckCircle2, Clock3, MoonStar, Sparkles, TriangleAlert } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
+import { readEncerramentoWithAI, type EncerramentoReadPayload } from '../../ia/encerramento';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useEncerramentoDomain, useHojeDomain, useHojeProjection } from '../../../store/fazer';
@@ -38,6 +39,7 @@ export function EncerramentoPageV2() {
   const projection = useHojeProjection();
   const items = useDataStore((state) => state.items);
   const [lightsOut, setLightsOut] = useState(false);
+  const [closingReading, setClosingReading] = useState<string | null>(null);
 
   const unfinishedItems = useMemo(
     () => projection.sections.focusItems.filter((item) => item.status === 'active' || item.status === 'paused'),
@@ -73,6 +75,59 @@ export function EncerramentoPageV2() {
     [hojeDomain.overdueItems, reconsiderItems],
   );
 
+  const revisitCount = useMemo(
+    () =>
+      postponedItems.filter((item) => {
+        const metadata = (item.metadata || {}) as Record<string, unknown>;
+        return metadata.inbox_needs_revisit === true;
+      }).length,
+    [postponedItems],
+  );
+
+  const encerramentoPayload = useMemo<EncerramentoReadPayload>(
+    () => ({
+      execution: {
+        completedCount: domain.completedCount,
+        openCount: unfinishedItems.length,
+        respectedInegociaveisCount: domain.respectedInegociaveisCount,
+      },
+      carryover: {
+        unfinishedCount: unfinishedItems.length,
+        reconsiderCount: reconsiderItems.length,
+      },
+      attention: {
+        overdueCount: hojeDomain.overdueItems.length,
+        revisitCount,
+      },
+    }),
+    [
+      domain.completedCount,
+      domain.respectedInegociaveisCount,
+      hojeDomain.overdueItems.length,
+      reconsiderItems.length,
+      revisitCount,
+      unfinishedItems.length,
+    ],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    setClosingReading(null);
+
+    async function loadClosingReading() {
+      const reading = await readEncerramentoWithAI(encerramentoPayload);
+      if (!cancelled && reading) {
+        setClosingReading(reading);
+      }
+    }
+
+    void loadClosingReading();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [encerramentoPayload]);
+
   return (
     <div className="space-y-4">
       <div>
@@ -89,6 +144,20 @@ export function EncerramentoPageV2() {
           O foco aqui e encerrar o ciclo do dia com nitidez. Nao e revisar o sistema inteiro, nem replanejar tudo agora.
         </p>
       </Card>
+
+      {closingReading ? (
+        <Card className="space-y-3 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent)]">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-[var(--text)]">Leitura de fechamento</p>
+              <p className="mt-2 whitespace-pre-line text-sm leading-6 text-[var(--text-secondary)]">{closingReading}</p>
+            </div>
+          </div>
+        </Card>
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="space-y-3 p-4">
