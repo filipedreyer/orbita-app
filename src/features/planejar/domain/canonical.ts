@@ -1,4 +1,5 @@
 import type { EntityType, Item, PriorityLevel } from '../../../lib/types';
+import { shiftLocalDate } from '../../../lib/dates';
 import { isActiveItem, isDayRelevantType, isOverdueItem } from '../../fazer/domain/canonical';
 
 export const PLANNING_ENTITY_TYPES: readonly EntityType[] = [
@@ -34,9 +35,7 @@ const PRIORITY_RANK: Record<PriorityLevel, number> = {
 };
 
 function addDays(referenceDate: string, days: number) {
-  const date = new Date(`${referenceDate}T12:00:00`);
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
+  return shiftLocalDate(referenceDate, days);
 }
 
 export function getPlanningMetadata(item: Item): PlanningMetadata {

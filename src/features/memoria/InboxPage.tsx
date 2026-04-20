@@ -30,6 +30,11 @@ export function InboxPage() {
   const [classificationSuggestion, setClassificationSuggestion] = useState<InboxClassificationSuggestion | null>(null);
   const [suggestionTypeApplied, setSuggestionTypeApplied] = useState(false);
   const processingIdRef = useRef<string | null>(null);
+  const postponedFromInbox = items.filter((entry) => {
+    if (entry.status === 'done' || entry.status === 'archived') return false;
+    const metadata = (entry.metadata || {}) as Record<string, unknown>;
+    return metadata.inbox_needs_revisit === true;
+  });
 
   function getInboxTextLabel(item: InboxItem) {
     return item.text.trim() ? item.text : 'Sem texto';
@@ -249,6 +254,15 @@ export function InboxPage() {
         <p className="text-sm leading-6 text-[var(--text-secondary)]">
           A inbox processa em fila. Cada item pode continuar aqui, virar entidade tipada, ser descartado, concluido ou adiado depois da classificacao.
         </p>
+        {postponedFromInbox.length > 0 ? (
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-4 py-3 text-sm text-[var(--text)]">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge label="Revisita pendente" tone="attention" />
+              <span className="font-semibold">{postponedFromInbox.length} itens sairam da inbox adiados e ainda pedem nova triagem.</span>
+            </div>
+            <p className="mt-1 text-[var(--text-secondary)]">Eles nao voltam para a fila sozinhos; hoje aparecem no sistema como itens que precisam ser revisitados.</p>
+          </div>
+        ) : null}
       </Card>
 
       <div className="space-y-3">
@@ -287,7 +301,7 @@ export function InboxPage() {
                 {classificationSuggestion ? (
                   <div className="space-y-3 rounded-[var(--radius-2xl)] border border-[var(--accent-border)] bg-[var(--accent-soft)]/50 px-4 py-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge label="Sugestao IA" color="var(--accent)" bgColor="var(--accent-soft)" />
+                      <Badge label="Sugestao IA" tone="project" />
                       <span className="text-xs font-medium text-[var(--text-secondary)]">
                         {classificationSuggestion.confidence === 'high'
                           ? 'Confianca alta'

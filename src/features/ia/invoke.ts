@@ -1,10 +1,10 @@
-import { supabase } from '../../lib/supabase';
+import { getSupabase } from '../../lib/supabase';
 import type { IAReadingResponse, IAReportResponse } from './types';
 
 type AIInvokeBody = string | FormData | Record<string, unknown>;
 
 export async function invokeAIFunction<TResponse>(functionName: string, body: AIInvokeBody, timeoutMs: number) {
-  const invokePromise = supabase.functions.invoke<TResponse>(functionName, { body });
+  const invokePromise = getSupabase().functions.invoke<TResponse>(functionName, { body });
   const timeoutPromise = new Promise<never>((_, reject) => {
     window.setTimeout(() => reject(new Error('timeout')), timeoutMs);
   });

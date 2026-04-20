@@ -8,6 +8,7 @@ import { IASuggestCards } from '../../ia/IASuggestCards';
 import { buildSuggestDayPayload, extendSuggestDayPayload, suggestDayWithAI } from '../../ia/suggest';
 import type { IASuggestResult, IASuggestionItem } from '../../ia/types';
 import type { Item } from '../../../lib/types';
+import { shiftLocalDate } from '../../../lib/dates';
 import { useDataStore } from '../../../store';
 import { useHojeDomain, useHojeProjection } from '../../../store/fazer';
 import { ChainList } from './ChainList';
@@ -26,9 +27,7 @@ function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
 }
 
 function shiftDay(date: string, days: number) {
-  const base = new Date(`${date}T12:00:00`);
-  base.setDate(base.getDate() + days);
-  return base.toISOString().slice(0, 10);
+  return shiftLocalDate(date, days);
 }
 
 function getDaySignal(count: number, operationalHours: number): 'balanced' | 'loaded' | 'overloaded' {

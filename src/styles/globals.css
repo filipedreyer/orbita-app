@@ -24,6 +24,14 @@
   --success: #3ba55c;
   /* Provisional semantic token for task/purple until the DS exposes an official value. */
   --task: #6f5ef9;
+  --state-healthy: var(--success);
+  --state-attention: var(--warning);
+  --state-risk: var(--danger);
+  --state-critical: #b93838;
+  --state-healthy-soft: color-mix(in srgb, var(--state-healthy) 14%, transparent);
+  --state-attention-soft: color-mix(in srgb, var(--state-attention) 14%, transparent);
+  --state-risk-soft: color-mix(in srgb, var(--state-risk) 14%, transparent);
+  --state-critical-soft: color-mix(in srgb, var(--state-critical) 14%, transparent);
   --overlay: rgba(17, 17, 17, 0.32);
   --focus-ring: rgba(14, 107, 107, 0.16);
   --focus-ring-danger: rgba(217, 79, 79, 0.14);

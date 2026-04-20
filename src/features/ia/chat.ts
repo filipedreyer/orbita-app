@@ -1,4 +1,4 @@
-import { today } from '../../lib/dates';
+import { shiftLocalDate, today } from '../../lib/dates';
 import type { InboxItem, Item } from '../../lib/types';
 import { deriveEncerramentoDomain, deriveHojeDomain } from '../fazer/domain/derived';
 import { derivePlanejarPortfolio } from '../planejar/domain/derived';
@@ -31,9 +31,7 @@ function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
 }
 
 function shiftDay(date: string, days: number) {
-  const base = new Date(`${date}T12:00:00`);
-  base.setDate(base.getDate() + days);
-  return base.toISOString().slice(0, 10);
+  return shiftLocalDate(date, days);
 }
 
 function getDaySignal(count: number, operationalHours: number): 'balanced' | 'loaded' | 'overloaded' {

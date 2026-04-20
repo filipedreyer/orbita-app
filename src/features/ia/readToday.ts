@@ -1,5 +1,5 @@
 import type { Item } from '../../lib/types';
-import { supabase } from '../../lib/supabase';
+import { getSupabase } from '../../lib/supabase';
 
 export type TodayReadCapacity = 'balanced' | 'loaded' | 'overloaded';
 export type TodayReadStatus = 'idle' | 'loading' | 'success' | 'empty' | 'timeout' | 'failure';
@@ -132,7 +132,7 @@ export function buildTodayReadPayload({
 }
 
 export async function readTodayWithAI(payload: TodayReadPayload) {
-  const invokePromise = supabase.functions.invoke<{ reading?: unknown }>('ia-read-today', {
+  const invokePromise = getSupabase().functions.invoke<{ reading?: unknown }>('ia-read-today', {
     body: payload,
   });
   const timeoutPromise = new Promise<never>((_, reject) => {

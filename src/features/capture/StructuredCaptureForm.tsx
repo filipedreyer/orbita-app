@@ -48,6 +48,7 @@ export function StructuredCaptureForm({
   const [dueDate, setDueDate] = useState<string | null>(null);
   const [priority, setPriority] = useState<PriorityLevel | null>(null);
   const [goalId, setGoalId] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<string | null>(null);
   const [frequency, setFrequency] = useState<FrequencyType>('daily');
   const [time, setTime] = useState('');
   const [location, setLocation] = useState('');
@@ -58,8 +59,11 @@ export function StructuredCaptureForm({
   const [showVoiceHint, setShowVoiceHint] = useState(false);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const imagePreviewUrlRef = useRef<string | null>(null);
 
   const goals = items.filter((item) => item.type === 'meta' && item.status === 'active');
+  const projects = items.filter((item) => item.type === 'projeto' && item.status === 'active');
+  const visibleProjects = goalId ? projects.filter((item) => item.goal_id === goalId) : projects;
 
   useEffect(() => {
     setType(initialType === 'inbox' ? 'tarefa' : initialType);
@@ -68,20 +72,41 @@ export function StructuredCaptureForm({
     setDueDate(null);
     setPriority(null);
     setGoalId(null);
+    setProjectId(null);
     setFrequency('daily');
     setTime('');
     setLocation('');
     setSubItemTexts([]);
     setNewSubItem('');
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+      imagePreviewUrlRef.current = null;
+    }
     setImageUri(null);
     setShowVoiceHint(false);
   }, [initialType]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    if (visibleProjects.some((project) => project.id === projectId)) return;
+    setProjectId(null);
+  }, [projectId, visibleProjects]);
 
   useEffect(() => {
     if (!showVoiceHint) return;
     const timeout = window.setTimeout(() => setShowVoiceHint(false), 3000);
     return () => window.clearTimeout(timeout);
   }, [showVoiceHint]);
+
+  useEffect(
+    () => () => {
+      if (imagePreviewUrlRef.current) {
+        URL.revokeObjectURL(imagePreviewUrlRef.current);
+        imagePreviewUrlRef.current = null;
+      }
+    },
+    [],
+  );
 
   function addSub() {
     if (newSubItem.trim()) {
@@ -97,8 +122,21 @@ export function StructuredCaptureForm({
   function handleImageSelection(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-    setImageUri(URL.createObjectURL(file));
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+    }
+    const nextUrl = URL.createObjectURL(file);
+    imagePreviewUrlRef.current = nextUrl;
+    setImageUri(nextUrl);
     event.target.value = '';
+  }
+
+  function clearImageSelection() {
+    if (imagePreviewUrlRef.current) {
+      URL.revokeObjectURL(imagePreviewUrlRef.current);
+      imagePreviewUrlRef.current = null;
+    }
+    setImageUri(null);
   }
 
   async function handleSave() {
@@ -137,7 +175,7 @@ export function StructuredCaptureForm({
         due_date: dueDate,
         completed_at: null,
         goal_id: goalId,
-        project_id: null,
+        project_id: projectId,
         tags,
         reschedule_count: 0,
         metadata,
@@ -159,6 +197,7 @@ export function StructuredCaptureForm({
   const showDate = ['tarefa', 'projeto', 'meta', 'evento', 'lembrete'].includes(type);
   const showPriority = type === 'tarefa';
   const showGoal = ['tarefa', 'habito', 'rotina', 'projeto'].includes(type) && goals.length > 0;
+  const showProject = type === 'tarefa' && visibleProjects.length > 0;
   const showFreq = ['habito', 'rotina'].includes(type);
   const showTime = type === 'evento';
   const showSubs = ['tarefa', 'projeto', 'rotina', 'lista'].includes(type);
@@ -236,6 +275,16 @@ export function StructuredCaptureForm({
         </Field>
       ) : null}
 
+      {showProject ? (
+        <Field label="Projeto vinculado">
+          <PillSelector
+            options={[{ key: '__none__', label: 'Nenhum' }, ...visibleProjects.map((project) => ({ key: project.id, label: project.title }))]}
+            selected={projectId || '__none__'}
+            onSelect={(key) => setProjectId(key === '__none__' ? null : key)}
+          />
+        </Field>
+      ) : null}
+
       {showSubs ? (
         <Field label={type === 'lista' ? 'Itens da lista' : type === 'rotina' ? 'Exercicios' : 'Sub-itens'}>
           <div className="space-y-2">
@@ -273,7 +322,7 @@ export function StructuredCaptureForm({
             <Card className="p-4">
               <div className="flex items-center gap-3">
                 <img src={imageUri} alt="Pre-visualizacao" className="h-12 w-12 rounded-[var(--radius-xl)] object-cover" />
-                <button type="button" className="text-sm font-medium text-[var(--danger)] transition hover:opacity-80" onClick={() => setImageUri(null)}>Remover</button>
+                <button type="button" className="text-sm font-medium text-[var(--danger)] transition hover:opacity-80" onClick={clearImageSelection}>Remover</button>
               </div>
             </Card>
           ) : null}

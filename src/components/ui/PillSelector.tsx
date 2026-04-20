@@ -8,9 +8,9 @@ function resolveSemanticPillColor(color?: string) {
   if (!color) return null;
 
   const normalized = color.trim().toLowerCase();
-  if (normalized === 'var(--danger)' || normalized === 'var(--red)') return 'var(--danger)';
-  if (normalized === 'var(--warning)' || normalized === 'var(--yellow)') return 'var(--warning)';
-  if (normalized === 'var(--success)' || normalized === 'var(--green)') return 'var(--success)';
+  if (normalized === 'var(--danger)' || normalized === 'var(--red)' || normalized === 'var(--state-risk)' || normalized === 'var(--state-critical)') return 'var(--state-risk)';
+  if (normalized === 'var(--warning)' || normalized === 'var(--yellow)' || normalized === 'var(--state-attention)') return 'var(--state-attention)';
+  if (normalized === 'var(--success)' || normalized === 'var(--green)' || normalized === 'var(--state-healthy)') return 'var(--state-healthy)';
   if (normalized === 'var(--accent)' || normalized === 'var(--teal)' || normalized === 'var(--accent-soft)' || normalized === 'var(--teal-light)') return 'var(--accent)';
   if (normalized === 'var(--task)' || normalized === '#2563eb') return 'var(--task)';
   if (normalized === 'var(--text-secondary)' || normalized === 'var(--ink)') return 'var(--text-secondary)';

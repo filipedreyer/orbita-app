@@ -138,15 +138,15 @@ export function AdminPage() {
             <div className="space-y-3 text-sm text-[var(--text-secondary)]">
               <div className="flex items-center justify-between rounded-2xl bg-[var(--surface-alt)] px-4 py-3">
                 <span>Tema</span>
-                <Badge label={String(profileSettings.theme ?? 'auto')} color="var(--teal)" />
+                <Badge label={String(profileSettings.theme ?? 'auto')} tone="project" />
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-[var(--surface-alt)] px-4 py-3">
                 <span>Tela inicial</span>
-                <Badge label={String(profileSettings.homeScreen ?? 'today')} color="var(--teal)" />
+                <Badge label={String(profileSettings.homeScreen ?? 'today')} tone="project" />
               </div>
               <div className="flex items-center justify-between rounded-2xl bg-[var(--surface-alt)] px-4 py-3">
                 <span>Weekly report</span>
-                <Badge label={String(profileSettings.weeklyReportDay ?? 'monday')} color="var(--teal)" />
+                <Badge label={String(profileSettings.weeklyReportDay ?? 'monday')} tone="project" />
               </div>
               <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-3 text-xs leading-5">
                 Usuarios ativos, error rate e metricas profundas de backend continuam dependentes de infraestrutura adicional e ficam placeholderizadas nesta release.
@@ -162,28 +162,28 @@ export function AdminPage() {
           <h3 className="text-lg font-semibold">Release readiness</h3>
         </div>
         <div className="flex flex-wrap gap-2 text-sm text-[var(--text-secondary)]">
-          <Badge label={pwa.isOfflineReady ? 'offline minimo pronto' : 'offline pendente'} color="var(--teal)" />
-          <Badge label="exportacao pronta" color="var(--teal)" />
-          <Badge label="onboarding pronto" color="var(--teal)" />
-          <Badge label="deploy vercel pronto" color="var(--teal)" />
+          <Badge label={pwa.isOfflineReady ? 'offline minimo pronto' : 'offline pendente'} tone="project" />
+          <Badge label="exportacao pronta" tone="project" />
+          <Badge label="onboarding pronto" tone="project" />
+          <Badge label="deploy vercel pronto" tone="project" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary">
+        <div className="flex flex-wrap gap-2 text-sm text-[var(--text-secondary)]">
+          <div className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-2xl)] border border-[var(--accent-border)] bg-[var(--accent-soft)] px-4 py-3 font-semibold text-[var(--accent)]">
             <BellRing className="h-4 w-4" />
             Baseline monitorada
-          </Button>
-          <Button variant="ghost">
+          </div>
+          <div className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
             <RefreshCcw className="h-4 w-4" />
             Sem migracoes extras
-          </Button>
-          <Button variant="ghost">
+          </div>
+          <div className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
             <Download className="h-4 w-4" />
             Exportacao pronta
-          </Button>
-          <Button variant="ghost">
+          </div>
+          <div className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
             <UserRound className="h-4 w-4" />
             Admin local
-          </Button>
+          </div>
         </div>
       </Card>
     </div>

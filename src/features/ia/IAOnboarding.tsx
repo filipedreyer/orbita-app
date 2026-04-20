@@ -15,7 +15,7 @@ export function IAOnboarding({
           <p className="text-sm font-semibold text-[var(--text)]">Onboarding guiado de Planejar</p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">Fluxo visual mockado para orientar o portfolio antes de qualquer IA real.</p>
         </div>
-        <Badge label="IA mock" color="var(--teal)" />
+      <Badge label="IA mock" tone="project" />
       </div>
 
       <div className="space-y-3">

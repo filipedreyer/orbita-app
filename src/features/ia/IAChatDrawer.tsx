@@ -41,7 +41,7 @@ export function IAChatDrawer({
           </div>
           <div className="flex flex-wrap gap-2">
             {context.visibleContext.map((entry) => (
-              <Badge key={entry} label={entry} color="var(--teal)" />
+              <Badge key={entry} label={entry} tone="project" />
             ))}
           </div>
         </Card>

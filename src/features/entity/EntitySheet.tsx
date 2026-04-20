@@ -10,7 +10,7 @@ import { BottomSheet, Card, CardRow, Checkbox, ProgressBar, PriorityBadge, Secti
 import { useConfirm } from '../../components/common/ConfirmModal';
 import { ImageThumbnail } from '../../components/common/ImageViewer';
 import { getGoalProgress } from '../entities/computations';
-import { formatDate, isPast, today } from '../../lib/dates';
+import { formatDate, isPast, shiftLocalDate, today } from '../../lib/dates';
 import type { EntityType, Item } from '../../lib/types';
 import { frequencyLabels, typeLabels } from '../../lib/types';
 import { useDataStore } from '../../store';
@@ -80,7 +80,7 @@ export function EntitySheet({ item, visible, onClose, onEdit }: Props) {
   const handleDelete = () => {
     confirm({
       title: 'Excluir permanentemente',
-      message: 'Essa ação não pode ser desfeita.',
+      message: 'Essa exclusao e permanente e nao possui desfazer.',
       actions: [
         { label: 'Excluir', onPress: () => { void deleteItem(item.id); onClose(); }, variant: 'danger' },
         { label: 'Cancelar', onPress: () => {}, variant: 'cancel' },
@@ -234,9 +234,7 @@ export function EntitySheet({ item, visible, onClose, onEdit }: Props) {
                   className="flex-1"
                   variant="ghost"
                   onClick={() => {
-                    const nextDate = new Date();
-                    nextDate.setDate(nextDate.getDate() + 1);
-                    void rescheduleItem(item.id, nextDate.toISOString().split('T')[0]);
+                    void rescheduleItem(item.id, shiftLocalDate(td, 1));
                     onClose();
                   }}
                 >

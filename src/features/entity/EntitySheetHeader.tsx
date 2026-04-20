@@ -10,12 +10,12 @@ export function EntitySheetHeader({ item }: { item: Item }) {
           <p className="mt-1 text-sm text-[var(--text-secondary)]">Wrapper externo para extensões do sheet preservado.</p>
         </div>
         <div className="flex gap-2">
-          <button type="button" className="rounded-full border border-[var(--border)] p-2 text-[var(--text-secondary)]">
+          <div className="rounded-full border border-[var(--border)] p-2 text-[var(--text-secondary)]" aria-hidden="true">
             <Sparkles className="h-4 w-4" />
-          </button>
-          <button type="button" className="rounded-full border border-[var(--border)] p-2 text-[var(--text-secondary)]">
+          </div>
+          <div className="rounded-full border border-[var(--border)] p-2 text-[var(--text-secondary)]" aria-hidden="true">
             <Link2 className="h-4 w-4" />
-          </button>
+          </div>
         </div>
       </div>
       <p className="mt-3 text-xs text-[var(--text-tertiary)]">Tipo atual: {item.type}</p>

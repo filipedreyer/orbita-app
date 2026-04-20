@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BottomSheet, Button, Card } from '../../components/ui';
-import { today } from '../../lib/dates';
+import { shiftLocalDate, today } from '../../lib/dates';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
 import { deriveHojeDomain } from '../fazer/domain/derived';
@@ -12,9 +12,7 @@ import { reportTimelineWithAI } from './reportTimeline';
 import type { IARouteContext } from './types';
 
 function shiftDay(date: string, days: number) {
-  const base = new Date(`${date}T12:00:00`);
-  base.setDate(base.getDate() + days);
-  return base.toISOString().slice(0, 10);
+  return shiftLocalDate(date, days);
 }
 
 function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {

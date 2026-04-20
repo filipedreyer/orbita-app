@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from 'react';
 import { createContext, useContext, useEffect, useMemo } from 'react';
 import type { Session } from '@supabase/supabase-js';
+import { isSupabaseConfigured } from '../../lib/supabase';
 import { onAuthStateChange } from '../../services/auth';
 import { useAuthStore } from '../../store';
 
@@ -18,6 +19,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const { session, loading, initialize, setSession } = useAuthStore();
 
   useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setSession(null);
+      return;
+    }
+
     void initialize();
     const {
       data: { subscription },

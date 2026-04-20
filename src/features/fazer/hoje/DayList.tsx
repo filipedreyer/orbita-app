@@ -36,11 +36,10 @@ export function DayList({
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-                <Badge label="Bloco fixo" color="var(--accent)" bgColor="color-mix(in srgb, var(--accent) 14%, transparent)" />
+                <Badge label="Bloco fixo" tone="project" />
                 <Badge
-                  label={getExecutionState?.(item)?.linked ? 'Direção visível' : 'Execução solta'}
-                  color={getExecutionState?.(item)?.linked ? 'var(--accent)' : 'var(--warning)'}
-                  bgColor={getExecutionState?.(item)?.linked ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'color-mix(in srgb, var(--warning) 16%, transparent)'}
+                  label={getExecutionState?.(item)?.linked ? 'Direcao visivel' : 'Execucao solta'}
+                  tone={getExecutionState?.(item)?.linked ? 'project' : 'attention'}
                 />
               </div>
               <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">inegociavel</p>
@@ -53,11 +52,10 @@ export function DayList({
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-                {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" color="var(--accent)" bgColor="color-mix(in srgb, var(--accent) 14%, transparent)" /> : null}
+                {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" tone="project" /> : null}
                 <Badge
-                  label={getExecutionState?.(item)?.linked ? 'Direção visível' : 'Execução solta'}
-                  color={getExecutionState?.(item)?.linked ? 'var(--accent)' : 'var(--warning)'}
-                  bgColor={getExecutionState?.(item)?.linked ? 'color-mix(in srgb, var(--accent) 14%, transparent)' : 'color-mix(in srgb, var(--warning) 16%, transparent)'}
+                  label={getExecutionState?.(item)?.linked ? 'Direcao visivel' : 'Execucao solta'}
+                  tone={getExecutionState?.(item)?.linked ? 'project' : 'attention'}
                 />
               </div>
               <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>

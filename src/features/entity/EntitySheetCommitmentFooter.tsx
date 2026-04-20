@@ -27,10 +27,9 @@ export function EntitySheetCommitmentFooter({ item }: { item: Item }) {
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Badge
           label={committed ? 'Compromisso operacional' : 'Sem compromisso operacional'}
-          color={committed ? 'var(--teal)' : 'var(--text-secondary)'}
-          bgColor={committed ? 'rgba(22, 163, 74, 0.12)' : 'rgba(100, 116, 139, 0.12)'}
+          tone={committed ? 'project' : 'neutral'}
         />
-        {committed && !coherent ? <Badge label="Coerencia pendente" color="#9A5B00" bgColor="rgba(245, 158, 11, 0.16)" /> : null}
+        {committed && !coherent ? <Badge label="Coerencia pendente" tone="attention" /> : null}
       </div>
       <p className="mt-2">Tags: {tags}</p>
       <p className="mt-1">Goal: {currentItem.goal_id ?? 'Sem vinculo'}</p>

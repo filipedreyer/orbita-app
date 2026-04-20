@@ -4,7 +4,7 @@ import type { EntityType, InboxItem, Item, SubItem } from '../lib/types';
 import * as authService from '../services/auth';
 import * as itemsService from '../services/items';
 import * as profileService from '../services/profile';
-import { isPast, today } from '../lib/dates';
+import { isPast, shiftLocalDate, today } from '../lib/dates';
 
 interface AuthState {
   session: Session | null;
@@ -49,6 +49,7 @@ interface DataState {
   ritualOrder: string[];
   loading: boolean;
   error: string | null;
+  clearError: () => void;
   loadAll: () => Promise<void>;
   loadSubItems: (itemId: string) => Promise<void>;
   addItem: (item: Omit<Item, 'id' | 'created_at' | 'updated_at'>) => Promise<Item | null>;
@@ -75,6 +76,30 @@ interface DataState {
   reset: () => void;
 }
 
+const habitCheckInFlight = new Set<string>();
+const acceptInboxInFlight = new Set<string>();
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isDuplicateSupabaseError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === '23505';
+}
+
+function getNextHabitStreak(lastChecked: unknown, currentStreak: unknown, referenceDate: string) {
+  const streak = typeof currentStreak === 'number' && Number.isFinite(currentStreak) ? currentStreak : 0;
+  if (lastChecked === referenceDate) {
+    return streak;
+  }
+
+  if (typeof lastChecked === 'string' && lastChecked === shiftLocalDate(referenceDate, -1)) {
+    return streak + 1;
+  }
+
+  return 1;
+}
+
 export const useDataStore = create<DataState>((set, get) => ({
   items: [],
   inbox: [],
@@ -82,6 +107,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   ritualOrder: [],
   loading: false,
   error: null,
+  clearError: () => set({ error: null }),
   loadAll: async () => {
     const session = useAuthStore.getState().session;
     if (!session?.user) return;
@@ -102,7 +128,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     try {
       const subItems = await itemsService.fetchSubItems(itemId);
       set((state) => ({ subItems: { ...state.subItems, [itemId]: subItems } }));
-    } catch {}
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Falha ao carregar sub-itens.') });
+    }
   },
   addItem: async (item) => {
     try {
@@ -205,7 +233,9 @@ export const useDataStore = create<DataState>((set, get) => ({
       const existing = get().subItems[itemId] || [];
       const subItem = await itemsService.createSubItem({ item_id: itemId, user_id: session.user.id, text, done: false, sort_order: existing.length });
       set((state) => ({ subItems: { ...state.subItems, [itemId]: [...(state.subItems[itemId] || []), subItem] } }));
-    } catch {}
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Falha ao adicionar sub-item.') });
+    }
   },
   toggleSubItem: async (subItemId, done) => {
     try {
@@ -217,13 +247,17 @@ export const useDataStore = create<DataState>((set, get) => ({
         });
         return { subItems: next };
       });
-    } catch {}
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Falha ao atualizar sub-item.') });
+    }
   },
   removeSubItem: async (subItemId, itemId) => {
     try {
       await itemsService.deleteSubItem(subItemId);
       set((state) => ({ subItems: { ...state.subItems, [itemId]: (state.subItems[itemId] || []).filter((subItem) => subItem.id !== subItemId) } }));
-    } catch {}
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Falha ao remover sub-item.') });
+    }
   },
   addToInbox: async (text, imageUrl) => {
     const session = useAuthStore.getState().session;
@@ -246,12 +280,19 @@ export const useDataStore = create<DataState>((set, get) => ({
     const session = useAuthStore.getState().session;
     const inboxItem = get().inbox.find((entry) => entry.id === inboxId);
     if (!session?.user || !inboxItem) return;
+    if (acceptInboxInFlight.has(inboxId)) return;
+
+    acceptInboxInFlight.add(inboxId);
+    let createdItem: Item | null = null;
     try {
       const type = asType || inboxItem.ai_suggested_type;
       const title = inboxItem.text.trim();
-      if (!type || !title) return;
+      if (!type || !title) {
+        set({ error: 'Para sair da inbox, o item precisa ter tipo e nome.' });
+        return;
+      }
       const tags = [...(inboxItem.text.match(/#[\w-]+/g) || []), ...(inboxItem.ai_suggested_tags?.match(/#[\w-]+/g) || [])];
-      const item = await itemsService.createItem({
+      createdItem = await itemsService.createItem({
         user_id: session.user.id,
         type,
         title,
@@ -267,17 +308,52 @@ export const useDataStore = create<DataState>((set, get) => ({
         metadata: {},
         image_url: inboxItem.image_url,
       });
-      await itemsService.deleteInboxItem(inboxId);
-      set((state) => ({ items: [item, ...state.items], inbox: state.inbox.filter((entry) => entry.id !== inboxId) }));
+      try {
+        await itemsService.deleteInboxItem(inboxId);
+      } catch (deleteError) {
+        try {
+          const refreshedInbox = await itemsService.fetchInbox(session.user.id);
+          const inboxStillExists = refreshedInbox.some((entry) => entry.id === inboxId);
+
+          if (!inboxStillExists) {
+            set((state) => ({ items: createdItem ? [createdItem, ...state.items] : state.items, inbox: state.inbox.filter((entry) => entry.id !== inboxId) }));
+            return;
+          }
+        } catch {
+          // Mantem a estrategia de compensacao abaixo quando a verificacao falha.
+        }
+
+        try {
+          await itemsService.deleteItem(createdItem.id);
+        } catch {
+          set({ error: 'Falha ao concluir a aceitacao da inbox e nao foi possivel reverter o item criado automaticamente.' });
+          return;
+        }
+
+        set({ error: getErrorMessage(deleteError, 'Falha ao remover item da inbox apos criar o destino. A operacao foi revertida.') });
+        return;
+      }
+
+      if (!createdItem) {
+        set({ error: 'Falha ao criar o item de destino da inbox.' });
+        return;
+      }
+
+      const acceptedItem = createdItem;
+      set((state) => ({ items: [acceptedItem, ...state.items], inbox: state.inbox.filter((entry) => entry.id !== inboxId) }));
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Falha ao aceitar item da inbox.' });
+      set({ error: getErrorMessage(error, 'Falha ao aceitar item da inbox.') });
+    } finally {
+      acceptInboxInFlight.delete(inboxId);
     }
   },
   dismissInbox: async (inboxId) => {
     try {
       await itemsService.deleteInboxItem(inboxId);
       set((state) => ({ inbox: state.inbox.filter((entry) => entry.id !== inboxId) }));
-    } catch {}
+    } catch (error) {
+      set({ error: getErrorMessage(error, 'Falha ao descartar item da inbox.') });
+    }
   },
   updateInboxItem: async (inboxId, updates) => {
     try {
@@ -291,19 +367,70 @@ export const useDataStore = create<DataState>((set, get) => ({
     const session = useAuthStore.getState().session;
     const item = get().items.find((entry) => entry.id === itemId);
     if (!session?.user || !item) return;
+    const checkedDate = today();
+    const inFlightKey = `${session.user.id}:${itemId}:${checkedDate}`;
+    if (habitCheckInFlight.has(inFlightKey)) return;
+
+    const meta = (item.metadata || {}) as Record<string, unknown>;
+    if (meta.last_checked === checkedDate) return;
+
+    habitCheckInFlight.add(inFlightKey);
     try {
-      await itemsService.logHabit(session.user.id, itemId, today());
-      const meta = (item.metadata || {}) as Record<string, unknown>;
-      const streak = typeof meta.streak === 'number' ? meta.streak : 0;
+      const existingLog = await itemsService.fetchHabitLogByDate(session.user.id, itemId, checkedDate);
+      let baseItem = item;
+
+      if (existingLog) {
+        const latestItem = await itemsService.fetchItemById(itemId);
+        if (latestItem) {
+          baseItem = latestItem;
+        }
+
+        const latestMeta = (baseItem.metadata || {}) as Record<string, unknown>;
+        if (latestMeta.last_checked === checkedDate) {
+          set((state) => ({ items: state.items.map((entry) => (entry.id === itemId ? baseItem : entry)) }));
+          return;
+        }
+      }
+
+      if (!existingLog) {
+        try {
+          await itemsService.logHabit(session.user.id, itemId, checkedDate);
+        } catch (error) {
+          if (!isDuplicateSupabaseError(error)) {
+            throw error;
+          }
+
+          const latestItem = await itemsService.fetchItemById(itemId);
+          if (latestItem) {
+            baseItem = latestItem;
+            const latestMeta = (latestItem.metadata || {}) as Record<string, unknown>;
+            if (latestMeta.last_checked === checkedDate) {
+              set((state) => ({ items: state.items.map((entry) => (entry.id === itemId ? latestItem : entry)) }));
+              return;
+            }
+          }
+        }
+      }
+
+      const baseMeta = (baseItem.metadata || {}) as Record<string, unknown>;
+      const nextStreak = getNextHabitStreak(baseMeta.last_checked, baseMeta.streak, checkedDate);
       const updated = await itemsService.updateItem(itemId, {
         metadata: {
-          ...meta,
-          streak: streak + 1,
-          last_checked: today(),
+          ...baseMeta,
+          streak: nextStreak,
+          last_checked: checkedDate,
         },
       });
       set((state) => ({ items: state.items.map((entry) => (entry.id === itemId ? updated : entry)) }));
-    } catch {}
+    } catch (error) {
+      if (isDuplicateSupabaseError(error)) {
+        return;
+      }
+
+      set({ error: getErrorMessage(error, 'Falha ao registrar habito.') });
+    } finally {
+      habitCheckInFlight.delete(inFlightKey);
+    }
   },
   uploadImage: async (uri, fileName) => {
     const session = useAuthStore.getState().session;

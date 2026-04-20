@@ -1,7 +1,8 @@
 import type { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { getSupabase } from '../lib/supabase';
 
 export async function signUp(email: string, password: string, displayName?: string) {
+  const supabase = getSupabase();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -14,17 +15,20 @@ export async function signUp(email: string, password: string, displayName?: stri
 }
 
 export async function signIn(email: string, password: string) {
+  const supabase = getSupabase();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
   return data;
 }
 
 export async function signOut() {
+  const supabase = getSupabase();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
 
 export async function getSession(): Promise<Session | null> {
+  const supabase = getSupabase();
   const {
     data: { session },
   } = await supabase.auth.getSession();
@@ -32,6 +36,7 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export async function getUser(): Promise<User | null> {
+  const supabase = getSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -39,6 +44,7 @@ export async function getUser(): Promise<User | null> {
 }
 
 export async function requestPasswordReset(email: string) {
+  const supabase = getSupabase();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${window.location.origin}/reset-password`,
   });
@@ -46,11 +52,13 @@ export async function requestPasswordReset(email: string) {
 }
 
 export async function updatePassword(password: string) {
+  const supabase = getSupabase();
   const { error } = await supabase.auth.updateUser({ password });
   if (error) throw error;
 }
 
 export function onAuthStateChange(callback: (session: Session | null) => void) {
+  const supabase = getSupabase();
   return supabase.auth.onAuthStateChange((_event, session) => {
     callback(session);
   });

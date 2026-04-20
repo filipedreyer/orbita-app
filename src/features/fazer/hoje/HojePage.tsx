@@ -19,7 +19,7 @@ import {
   type TodayReadCapacity,
   type TodayReadStatus,
 } from '../../ia/readToday';
-import { today } from '../../../lib/dates';
+import { shiftLocalDate, today } from '../../../lib/dates';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useHojeDomain, useHojeProjection } from '../../../store/fazer';
@@ -38,9 +38,7 @@ function isOlderThanDays(timestamp: string, days: number) {
 }
 
 function getNextDay(date: string) {
-  const base = new Date(`${date}T12:00:00`);
-  base.setDate(base.getDate() + 1);
-  return base.toISOString().slice(0, 10);
+  return shiftLocalDate(date, 1);
 }
 
 export function HojePage() {
@@ -458,11 +456,6 @@ export function HojePage() {
       </Card>
 
       <CompletedSection items={projection.sections.completed} />
-
-      <div className="rounded-[var(--radius-2xl)] border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-xs text-[var(--text-tertiary)]">
-        Referencia do dominio canonico: {today()}
-      </div>
-
       <CreateLauncherModal visible={captureOpen} onClose={() => setCaptureOpen(false)} />
       {selectedItem ? (
         <EntitySheetWrapper

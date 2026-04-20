@@ -1,4 +1,5 @@
 import type { Item } from '../../../lib/types';
+import { shiftLocalDate, toLocalDateString } from '../../../lib/dates';
 import { deriveHojeDomain } from '../../fazer/domain/derived';
 import { isActiveItem } from '../../fazer/domain/canonical';
 import {
@@ -67,13 +68,19 @@ export function derivePlanejarPortfolio(items: Item[], referenceDate: string) {
       tasksByProject.set(task.project_id, [...current, task]);
     });
 
+  const weekStart = shiftLocalDate(referenceDate, -6);
+
   const weeklyReview = {
     referenceDate,
     goalsCount: goals.length,
     projectsCount: projects.length,
     habitsCount: habits.length,
     inegociaveisCount: inegociaveis.length,
-    completedThisWeek: items.filter((item) => item.status === 'done' && !!item.completed_at && item.completed_at.slice(0, 10) >= referenceDate.slice(0, 8) + '01').length,
+    completedThisWeek: items.filter((item) => {
+      if (item.status !== 'done' || !item.completed_at) return false;
+      const completedDate = toLocalDateString(item.completed_at);
+      return completedDate >= weekStart && completedDate <= referenceDate;
+    }).length,
     overdueOpenCount: items.filter((item) => item.type === 'tarefa' && item.status === 'active' && !!item.due_date && item.due_date < referenceDate).length,
   };
 

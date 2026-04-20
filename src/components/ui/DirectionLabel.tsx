@@ -2,9 +2,9 @@ import { ArrowRight, ArrowDown, ArrowUp } from 'lucide-react';
 
 export function DirectionLabel({ direction }: { direction: 'up' | 'stable' | 'down' }) {
   const config = {
-    up: { icon: ArrowUp, label: 'Aproximando', color: 'var(--success)' },
-    stable: { icon: ArrowRight, label: 'Estável', color: 'var(--yellow)' },
-    down: { icon: ArrowDown, label: 'Afastando', color: 'var(--danger)' },
+    up: { icon: ArrowUp, label: 'Aproximando', color: 'var(--state-healthy)' },
+    stable: { icon: ArrowRight, label: 'Estavel', color: 'var(--state-attention)' },
+    down: { icon: ArrowDown, label: 'Afastando', color: 'var(--state-risk)' },
   }[direction];
 
   const Icon = config.icon;

@@ -16,6 +16,7 @@ import { readRitualWithAI, type RitualReadPayload } from '../../ia/ritual';
 import { buildSuggestDayPayload, suggestDayWithAI } from '../../ia/suggest';
 import type { IASuggestResult, IASuggestionItem } from '../../ia/types';
 import type { Item } from '../../../lib/types';
+import { shiftLocalDate } from '../../../lib/dates';
 import { useDataStore } from '../../../store';
 import { useHojeProjection, useRitualDomain } from '../../../store/fazer';
 import { isRitualLockedItem } from '../domain/ordering';
@@ -28,9 +29,7 @@ function isOlderThanDays(timestamp: string, days: number) {
 }
 
 function getNextDay(date: string) {
-  const base = new Date(`${date}T12:00:00`);
-  base.setDate(base.getDate() + 1);
-  return base.toISOString().slice(0, 10);
+  return shiftLocalDate(date, 1);
 }
 
 function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {

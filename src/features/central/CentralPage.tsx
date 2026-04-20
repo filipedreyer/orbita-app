@@ -303,9 +303,9 @@ export function CentralPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 text-sm">
-              <Badge label={pwa.isInstalled ? 'instalado' : 'nao instalado'} color="var(--teal)" />
-              <Badge label={pwa.isOfflineReady ? 'offline minimo pronto' : 'offline pendente'} color="var(--teal)" />
-              <Badge label={pwa.isOnline ? 'online' : 'offline'} color={pwa.isOnline ? 'var(--teal)' : 'var(--red)'} />
+              <Badge label={pwa.isInstalled ? 'instalado' : 'nao instalado'} tone="project" />
+              <Badge label={pwa.isOfflineReady ? 'offline minimo pronto' : 'offline pendente'} tone="project" />
+              <Badge label={pwa.isOnline ? 'online' : 'offline'} tone={pwa.isOnline ? 'healthy' : 'risk'} />
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={() => void handleInstallPwa()} disabled={!pwa.canInstall}>
