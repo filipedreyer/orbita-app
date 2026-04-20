@@ -18,6 +18,20 @@ Copie `.env.example` para `.env.local` e preencha:
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
+### Regra de runtime sem `.env.local`
+
+- Sem `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`, o app deve subir em modo degradado.
+- Nesse estado, a interface deve renderizar a tela controlada de configuracao e nao deve quebrar durante o bootstrap.
+- Nesse estado, o app nao deve tentar criar o client do Supabase nem tocar em servicos que dependem dele antes da validacao de configuracao.
+- O ponto unico de controle dessa regra e `src/lib/supabase.ts`: o client so pode existir quando as variaveis estiverem presentes, e o acesso deve passar pelo guard centralizado (`getSupabase()`).
+- Qualquer mudanca nesse comportamento deve ser tratada como alteracao estrutural de runtime, nao como ajuste cosmetico.
+
+### Warnings esperados em desenvolvimento
+
+- PWA: o browser pode emitir aviso informando que `beforeinstallprompt.preventDefault()` impediu a exibicao automatica do banner de instalacao.
+- Supabase Auth: em ambiente de desenvolvimento com React Strict Mode, o GoTrue pode registrar aviso de recuperacao de lock (`lock ... was not released within 5000ms`).
+- Esses avisos nao representam crash de bootstrap nem erro de configuracao do fallback.
+
 ## Scripts
 
 - `npm run dev`
