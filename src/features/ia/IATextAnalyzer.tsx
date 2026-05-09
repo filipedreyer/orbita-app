@@ -22,10 +22,10 @@ export function IATextAnalyzer({
     high: 'Alta',
   };
 
-  const typeColor: Record<'tarefa' | 'lembrete' | 'ideia', string> = {
+  const typeColor: Record<'tarefa' | 'lembrete' | 'nota', string> = {
     tarefa: 'var(--accent-purple)',
     lembrete: 'var(--accent-amber)',
-    ideia: 'var(--accent-teal)',
+    nota: 'var(--accent-teal)',
   };
 
   return (
@@ -53,7 +53,7 @@ export function IATextAnalyzer({
                 <p className="text-sm font-medium text-[var(--text)]">{suggestion.title}</p>
                 <div className="flex gap-2">
                   <Button className="flex-1" onClick={() => void createFromAnalysis(sourceId, suggestion)}>
-                    Criar
+                    Revisar criacao
                   </Button>
                   <Button className="flex-1" variant="ghost" onClick={() => ignoreAnalysisSuggestion(sourceId, suggestion.title)}>
                     Ignorar

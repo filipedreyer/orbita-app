@@ -13,6 +13,7 @@ import { getGoalProgress } from '../entities/computations';
 import { formatDate, isPast, shiftLocalDate, today } from '../../lib/dates';
 import type { EntityType, Item } from '../../lib/types';
 import { frequencyLabels, typeLabels } from '../../lib/types';
+import { canonicalEntityTypes, isLegacyEntityType, migrationWarnings } from '../../lib/entity-domain';
 import { useDataStore } from '../../store';
 
 interface Props {
@@ -53,6 +54,7 @@ export function EntitySheet({ item, visible, onClose, onEdit }: Props) {
   const isList = item.type === 'lista';
   const isEvent = item.type === 'evento';
   const canComplete = ['tarefa', 'projeto', 'meta', 'evento', 'lembrete'].includes(item.type);
+  const legacyWarning = isLegacyEntityType(item.type) ? migrationWarnings[item.type] : null;
   const goalProg = isGoal ? getGoalProgress(items, item.id) : null;
 
   const handleComplete = () => {
@@ -132,6 +134,13 @@ export function EntitySheet({ item, visible, onClose, onEdit }: Props) {
             {(isHabit || isRoutine) && meta.frequency ? <span>{frequencyLabels[meta.frequency as keyof typeof frequencyLabels]}</span> : null}
             {item.reschedule_count > 0 ? <span>Reprogramado {item.reschedule_count}x</span> : null}
           </div>
+
+          {legacyWarning ? (
+            <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+              <p className="text-sm font-semibold text-[var(--text)]">Tipo legado</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">{legacyWarning}</p>
+            </Card>
+          ) : null}
 
           {item.tags.length > 0 ? (
             <div className="flex flex-wrap gap-2 text-sm font-medium text-[var(--teal)]">
@@ -253,7 +262,7 @@ export function EntitySheet({ item, visible, onClose, onEdit }: Props) {
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] p-4">
               <p className="mb-3 text-sm font-semibold">Promover para:</p>
               <PillSelector
-                options={(['tarefa', 'projeto', 'meta', 'habito', 'rotina', 'evento', 'nota', 'ideia', 'lembrete', 'lista'] as const)
+                options={canonicalEntityTypes
                   .filter((type) => type !== item.type)
                   .map((type) => ({ key: type, label: typeLabels[type] }))}
                 selected={promoteType}

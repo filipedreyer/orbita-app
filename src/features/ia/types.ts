@@ -34,6 +34,16 @@ export interface IAReportResponse {
   blocks: IAReportBlock[];
 }
 
+export type IAOutputKind = 'leitura' | 'sugestao' | 'relatorio' | 'acao_proposta';
+
+export interface IAOutputDescriptor {
+  id: string;
+  kind: IAOutputKind;
+  title: string;
+  body: string;
+  actions?: Array<IAActionDescriptor | IAChatAction>;
+}
+
 export interface IAChatMessage {
   id: string;
   role: 'assistant' | 'user';
@@ -104,7 +114,7 @@ export interface IASuggestResult {
 }
 
 export interface IATextAnalysisSuggestion {
-  type: 'tarefa' | 'lembrete' | 'ideia';
+  type: 'tarefa' | 'lembrete' | 'nota';
   title: string;
   confidence: 'low' | 'medium' | 'high';
 }
@@ -128,12 +138,15 @@ export interface IARouteContext {
 
 export interface IAContextValue {
   routeContext: IARouteContext;
+  ideaOpen: boolean;
   chatOpen: boolean;
   reportOpen: boolean;
   draftMessage: string;
   completedActions: Record<string, boolean>;
   analysisResults: Record<string, IATextAnalysisResult | undefined>;
   setDraftMessage: (value: string) => void;
+  openIdea: () => void;
+  closeIdea: () => void;
   openChat: () => void;
   closeChat: () => void;
   openReports: () => void;

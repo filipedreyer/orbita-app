@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import type { EntityType, InboxItem, Item, SubItem } from '../lib/types';
+import { assertNewEntityType, isLegacyEntityType, migrationWarnings, normalizeEntityType } from '../lib/entity-domain';
 import * as authService from '../services/auth';
 import * as itemsService from '../services/items';
 import * as profileService from '../services/profile';
@@ -134,6 +135,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
   addItem: async (item) => {
     try {
+      assertNewEntityType(item.type);
       const created = await itemsService.createItem(item);
       set((state) => ({ items: [created, ...state.items] }));
       return created;
@@ -188,6 +190,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     const item = get().items.find((entry) => entry.id === id);
     const session = useAuthStore.getState().session;
     if (!item || !session?.user) return;
+    if (isLegacyEntityType(item.type)) {
+      set({ error: migrationWarnings[item.type] });
+      return;
+    }
     try {
       const copy = await itemsService.createItem({
         user_id: session.user.id,
@@ -212,6 +218,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
   promoteItem: async (id, newType) => {
     try {
+      assertNewEntityType(newType);
       const updated = await itemsService.updateItem(id, { type: newType });
       set((state) => ({ items: state.items.map((item) => (item.id === id ? updated : item)) }));
     } catch (error) {
@@ -285,7 +292,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     acceptInboxInFlight.add(inboxId);
     let createdItem: Item | null = null;
     try {
-      const type = asType || inboxItem.ai_suggested_type;
+      const type = normalizeEntityType(asType || inboxItem.ai_suggested_type);
       const title = inboxItem.text.trim();
       if (!type || !title) {
         set({ error: 'Para sair da inbox, o item precisa ter tipo e nome.' });

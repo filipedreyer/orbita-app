@@ -1,7 +1,6 @@
 import { Sparkles, Wand2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Button, Card, Input, Textarea } from '../../components/ui';
-import type { InegociavelMetadata } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
 import { runOnboardingWithAI, type IAOnboardingStepKey } from '../ia/onboarding';
 import { usePlanejarPortfolio } from '../../store/planejar';
@@ -203,26 +202,8 @@ export function PlanOnboardingBuilder() {
     }
 
     if (draft.type === 'inegociavel') {
-      const metadata: InegociavelMetadata = {
-        regra_tipo: 'frequencia',
-      };
-
-      await addItem({
-        user_id: session.user.id,
-        type: 'inegociavel',
-        title: draft.title.trim(),
-        description: draft.description.trim() || null,
-        status: 'active',
-        priority: null,
-        due_date: null,
-        completed_at: null,
-        goal_id: null,
-        project_id: null,
-        tags: [],
-        reschedule_count: 0,
-        metadata,
-        image_url: null,
-      });
+      updateDraft(draft.id, { accepted: false, ignored: true });
+      return;
     }
 
     updateDraft(draft.id, { accepted: true, ignored: true });

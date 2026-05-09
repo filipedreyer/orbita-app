@@ -25,7 +25,6 @@ function formatRuleLabel(metadata: InegociavelMetadata) {
 
 export function InegociaveisPage() {
   const session = useAuthStore((state) => state.session);
-  const addItem = useDataStore((state) => state.addItem);
   const updateItem = useDataStore((state) => state.updateItem);
   const portfolio = usePlanejarPortfolio();
   const hojeDomain = useHojeDomain();
@@ -72,22 +71,7 @@ export function InegociaveisPage() {
       return;
     }
 
-    await addItem({
-      user_id: session.user.id,
-      type: 'inegociavel',
-      title: values.title,
-      description: values.description,
-      status: 'active',
-      priority: null,
-      due_date: null,
-      completed_at: null,
-      goal_id: null,
-      project_id: null,
-      tags: [],
-      reschedule_count: 0,
-      metadata,
-      image_url: null,
-    });
+    setCreating(false);
   }
 
   return (
@@ -97,12 +81,12 @@ export function InegociaveisPage() {
           <div>
             <h3 className="text-xl font-semibold">Inegociaveis</h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Restricoes estruturais do sistema usando <code>type = &quot;inegociavel&quot;</code> e metadata do modelo atual.
+              Registros legados continuam legiveis. Novos essenciais protegidos serao migrados como condicao/flag em fase propria.
             </p>
           </div>
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)} disabled>
             <Plus className="h-4 w-4" />
-            Novo inegociavel
+            Novo legado bloqueado
           </Button>
         </div>
       </Card>
