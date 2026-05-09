@@ -1,0 +1,20 @@
+# Registro de Divida - Olys V2.2
+
+| Item | Severidade | Impacto | Risco | Arquivos afetados | Esforco | Dependencias | Recomendacao |
+|---|---|---|---|---|---|---|---|
+| Governanca nao existia no checkout local | Alta | Futuras fases sem fonte local de verdade | Regressao arquitetural | `AGENTS.md`, `architecture/*`, `governance/*` | Baixo | Nenhuma | Recriar minimo canonico e manter atualizado |
+| Menu/Acesso apontam para Central | Media | Semantica temporaria de navegacao | Central voltar a ser primaria por habito | `TopBarOlys.tsx` | Medio | Superficies de Menu e Acesso | Criar destinos canonicos |
+| Busca aponta para Memoria | Media | Busca ainda nao e busca global | Usuario confundir busca com memoria | `TopBarOlys.tsx` | Medio | Rota/componente de busca | Implementar busca global dedicada |
+| Marca Olys sem asset oficial | Baixa | Identidade provisoria | Fallback virar marca definitiva | `OlysBrand.tsx` | Baixo | Asset oficial | Substituir constante por asset |
+| IA contextual ainda usa chat drawer legado | Alta | Idea abre camada ainda parcialmente chatbot | Semantica de IA incompleta | `FloatingActionPair.tsx`, `features/ia/*` | Alto | Fase IA | Migrar IA contextual com confirmacao |
+| Drawers IA legados encapsulados | Media | Superficies antigas permanecem no codigo | Reuso acidental fora de Idea | `IAChatDrawer.tsx`, `IAReportDrawer.tsx` | Medio | Fase limpeza IA | Depreciar formalmente e remover em seguranca |
+| Agenda mapeada tecnicamente para Evento | Media | Grid canonico existe sem entidade Agenda | Confusao futura de dominio | `capture-types.ts`, `CaptureSurface.tsx` | Medio | Fase dominio | Decidir se Agenda e superficie ou entidade |
+| Inbox sem schema dedicado de origem | Media | Rastreabilidade fica no item convertido | Origem nao visivel enquanto item esta na Inbox | `InboxPage.tsx`, `store/index.ts`, Supabase | Medio | Backend/schema | Criar campos dedicados quando migrar schema |
+| Caixola usa heuristica local de sugestao | Baixa | IA real ainda nao clusteriza | Sugestoes limitadas | `CaixolaPage.tsx` | Medio | Fase IA backend | Criar edge function ou output tipado dedicado |
+| Tipos legados incluem ideia/inegociavel | Alta | Modelo diverge da arquitetura | Remocao apressada pode quebrar dados | `src/lib/types.ts` | Alto | Inventario de dados | Planejar migracao de entidades |
+| Storage e RLS nao auditados profundamente | Alta | Privacidade e ownership incertos | Exposicao de anexos/dados | `src/services/*`, `supabase/*` | Alto | Politicas Supabase | Criar fase de seguranca |
+| Schema Supabase ainda aceita tipos legados | Alta | Frontend bloqueia criacao nova, mas banco pode aceitar writes externos | Dados novos semanticamente errados fora da UI | Supabase schema/policies ausentes | Alto | Inventario e migracao SQL | Versionar schema e criar constraints seguras |
+| `ideia` e `inegociavel` preservados para leitura | Media | Compatibilidade mantem vocabulario legado visivel em alguns historicos | Confusao enquanto migracao de dados nao ocorre | `src/lib/types.ts`, `src/lib/entity-domain.ts`, telas de memoria | Medio | Inventario de dados | Migrar registros apos plano validado |
+| Agenda persiste como Evento | Media | Decisao provisoria pode esconder diferencas de calendario | Modelagem futura mais trabalhosa | `src/lib/entity-domain.ts`, `capture-types.ts` | Medio | Decisao canonica de schema | Formalizar Agenda como superficie ou entidade |
+| Templates persistem provisoriamente como Nota | Media | Template nao tem schema proprio | Reuso limitado e metadados incompletos | `src/lib/entity-domain.ts`, `capture-types.ts` | Medio | Fase templates | Definir estrutura de template antes de migrar dados |
+| IA onboarding ainda conhece `inegociavel` | Media | Sugestao legada ainda pode aparecer, embora criacao esteja bloqueada | Microcopy antiga permanecer em fluxo assistido | `src/features/ia/types.ts`, `PlanOnboardingBuilder.tsx` | Baixo | Fase Planejar/IA | Migrar sugestoes para essencial protegido como condicao |
