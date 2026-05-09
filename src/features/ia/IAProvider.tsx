@@ -1,12 +1,13 @@
-import type { PropsWithChildren } from 'react';
-import { createContext, useState } from 'react';
+ï»¿import type { PropsWithChildren } from 'react';
+import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore, useDataStore } from '../../store';
-import { IAChatDrawer } from './IAChatDrawer';
-import { orchestrateChatMessage } from './chat';
+import { IAConfirmationSheet } from './IAConfirmationSheet';
+import { IAContext } from './IAContext';
 import { IAContextBuilder } from './IAContextBuilder';
-import { IAReportDrawer } from './IAReportDrawer';
+import { IdeaSurface, type IdeaSurfaceMode } from './IdeaSurface';
 import { analyzeTextWithAI } from './analyzeText';
+import { orchestrateChatMessage } from './chat';
 import type {
   IAActionDescriptor,
   IAChatAction,
@@ -16,7 +17,12 @@ import type {
   IATextAnalysisSuggestion,
 } from './types';
 
-export const IAContext = createContext<IAContextValue | null>(null);
+type PendingIAAction = IAActionDescriptor | IAChatAction;
+
+interface PendingAnalysisCreation {
+  sourceId: string;
+  suggestion: IATextAnalysisSuggestion;
+}
 
 function removeAnalysisEntry(
   current: Record<string, IATextAnalysisResult | undefined>,
@@ -65,33 +71,106 @@ export function IAProvider({ children }: PropsWithChildren) {
   const items = useDataStore((state) => state.items);
   const inbox = useDataStore((state) => state.inbox);
   const addItem = useDataStore((state) => state.addItem);
-  const [chatOpen, setChatOpen] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
+  const [ideaOpen, setIdeaOpen] = useState(false);
+  const [ideaMode, setIdeaMode] = useState<IdeaSurfaceMode>('leitura');
   const [draftMessage, setDraftMessage] = useState('');
   const [completedActions, setCompletedActions] = useState<Record<string, boolean>>({});
   const [localMessages, setLocalMessages] = useState<Record<string, IAChatMessage[]>>({});
   const [analysisResults, setAnalysisResults] = useState<Record<string, IATextAnalysisResult | undefined>>({});
+  const [pendingAction, setPendingAction] = useState<PendingIAAction | null>(null);
+  const [pendingAnalysisCreation, setPendingAnalysisCreation] = useState<PendingAnalysisCreation | null>(null);
 
   return (
     <IAContextBuilder pathname={location.pathname} items={items} inbox={inbox}>
       {(routeContext) => {
         const contextMessages = [...routeContext.chatMessages, ...(localMessages[routeContext.contextKey] ?? [])];
 
+        async function confirmAnalysisCreation() {
+          if (!pendingAnalysisCreation) return;
+
+          const userId = session?.user?.id;
+          if (!userId) return;
+
+          const { sourceId, suggestion } = pendingAnalysisCreation;
+          const created = await addItem({
+            user_id: userId,
+            type: suggestion.type,
+            title: suggestion.title,
+            description: null,
+            status: 'active',
+            priority: null,
+            due_date: null,
+            completed_at: null,
+            goal_id: null,
+            project_id: null,
+            tags: [],
+            reschedule_count: 0,
+            metadata: {},
+            image_url: null,
+          });
+
+          if (!created) return;
+
+          setAnalysisResults((current) => {
+            const currentSuggestions = current[sourceId]?.suggestions ?? [];
+            const remaining = currentSuggestions.filter(
+              (entry) => !(entry.type === suggestion.type && entry.title === suggestion.title),
+            );
+            return keepRemainingSuggestions(current, sourceId, remaining);
+          });
+
+          setPendingAnalysisCreation(null);
+        }
+
+        function confirmPendingAction() {
+          if (!pendingAction) return;
+
+          setCompletedActions((current) => ({ ...current, [pendingAction.id]: true }));
+
+          if (isChatAction(pendingAction)) {
+            const assistantReply: IAChatMessage = {
+              id: `${routeContext.contextKey}-assistant-action-${Date.now()}`,
+              role: 'assistant',
+              content: `Acao revisada: ${pendingAction.label.toLowerCase()}. Nada foi persistido automaticamente.`,
+              response: {
+                type: 'action',
+                content: `Acao revisada: ${pendingAction.label.toLowerCase()}. Nada foi persistido automaticamente.`,
+                actions: [],
+              },
+            };
+            setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [assistantReply]));
+          }
+
+          setPendingAction(null);
+        }
+
         const value: IAContextValue = {
           routeContext: {
             ...routeContext,
             chatMessages: contextMessages,
           },
-          chatOpen,
-          reportOpen,
+          ideaOpen,
+          chatOpen: ideaOpen && ideaMode === 'chat',
+          reportOpen: ideaOpen && ideaMode === 'relatorios',
           draftMessage,
           completedActions,
           analysisResults,
           setDraftMessage,
-          openChat: () => setChatOpen(true),
-          closeChat: () => setChatOpen(false),
-          openReports: () => setReportOpen(true),
-          closeReports: () => setReportOpen(false),
+          openIdea: () => {
+            setIdeaMode('leitura');
+            setIdeaOpen(true);
+          },
+          closeIdea: () => setIdeaOpen(false),
+          openChat: () => {
+            setIdeaMode('chat');
+            setIdeaOpen(true);
+          },
+          closeChat: () => setIdeaOpen(false),
+          openReports: () => {
+            setIdeaMode('relatorios');
+            setIdeaOpen(true);
+          },
+          closeReports: () => setIdeaOpen(false),
           sendMessage: async () => {
             if (!draftMessage.trim()) return;
 
@@ -122,21 +201,7 @@ export function IAProvider({ children }: PropsWithChildren) {
             setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [assistantReply]));
           },
           triggerAction: (action: IAActionDescriptor | IAChatAction) => {
-            setCompletedActions((current) => ({ ...current, [action.id]: true }));
-
-            if (isChatAction(action)) {
-              const assistantReply: IAChatMessage = {
-                id: `${routeContext.contextKey}-assistant-action-${Date.now()}`,
-                role: 'assistant',
-                content: `Proximo passo preparado: ${action.label.toLowerCase()}. Nada foi executado ainda.`,
-                response: {
-                  type: 'action',
-                  content: `Proximo passo preparado: ${action.label.toLowerCase()}. Nada foi executado ainda.`,
-                  actions: [],
-                },
-              };
-              setLocalMessages((current) => appendLocalMessages(current, routeContext.contextKey, [assistantReply]));
-            }
+            setPendingAction(action);
           },
           analyzeText: async (sourceId: string, _sourceLabel: string, text: string) => {
             const normalizedText = text.trim();
@@ -146,9 +211,6 @@ export function IAProvider({ children }: PropsWithChildren) {
               return;
             }
 
-            // TODO: CLAUDE — conectar com Edge Function ia-analyze-text
-            // Input esperado: { text }
-            // Output esperado: { suggestions: [{ type, title, confidence }] }
             const result = await analyzeTextWithAI({ text: normalizedText });
             if (!result || result.suggestions.length === 0) {
               return;
@@ -162,35 +224,7 @@ export function IAProvider({ children }: PropsWithChildren) {
             }));
           },
           createFromAnalysis: async (sourceId, suggestion) => {
-            const userId = session?.user?.id;
-            if (!userId) return;
-
-            const created = await addItem({
-              user_id: userId,
-              type: suggestion.type,
-              title: suggestion.title,
-              description: null,
-              status: 'active',
-              priority: null,
-              due_date: null,
-              completed_at: null,
-              goal_id: null,
-              project_id: null,
-              tags: [],
-              reschedule_count: 0,
-              metadata: {},
-              image_url: null,
-            });
-
-            if (!created) return;
-
-            setAnalysisResults((current) => {
-              const currentSuggestions = current[sourceId]?.suggestions ?? [];
-              const remaining = currentSuggestions.filter(
-                (entry) => !(entry.type === suggestion.type && entry.title === suggestion.title),
-              );
-              return keepRemainingSuggestions(current, sourceId, remaining);
-            });
+            setPendingAnalysisCreation({ sourceId, suggestion });
           },
           ignoreAnalysisSuggestion: (sourceId, suggestionTitle) => {
             setAnalysisResults((current) => {
@@ -204,10 +238,11 @@ export function IAProvider({ children }: PropsWithChildren) {
         return (
           <IAContext.Provider value={value}>
             {children}
-            <IAChatDrawer
-              visible={chatOpen}
-              onClose={() => setChatOpen(false)}
-              onOpenReports={() => setReportOpen(true)}
+            <IdeaSurface
+              visible={ideaOpen}
+              mode={ideaMode}
+              onModeChange={setIdeaMode}
+              onClose={() => setIdeaOpen(false)}
               draftMessage={draftMessage}
               onDraftChange={setDraftMessage}
               onSend={value.sendMessage}
@@ -215,7 +250,24 @@ export function IAProvider({ children }: PropsWithChildren) {
               completedActions={completedActions}
               onRunAction={value.triggerAction}
             />
-            <IAReportDrawer visible={reportOpen} onClose={() => setReportOpen(false)} context={value.routeContext} />
+            <IAConfirmationSheet
+              visible={!!pendingAction}
+              title={pendingAction?.label ?? 'Acao proposta'}
+              description={pendingAction ? 'A IA preparou esta acao como proposta. Confirme apenas se esta intencao fizer sentido; nenhuma alteracao sera persistida automaticamente por este passo.' : ''}
+              outputKind="acao_proposta"
+              confirmLabel="Confirmar revisao"
+              onCancel={() => setPendingAction(null)}
+              onConfirm={confirmPendingAction}
+            />
+            <IAConfirmationSheet
+              visible={!!pendingAnalysisCreation}
+              title={pendingAnalysisCreation?.suggestion.title ?? 'Criar item'}
+              description={pendingAnalysisCreation ? `Criar um item do tipo ${pendingAnalysisCreation.suggestion.type} a partir da analise de IA?` : ''}
+              outputKind="acao_proposta"
+              confirmLabel="Criar com confirmacao"
+              onCancel={() => setPendingAnalysisCreation(null)}
+              onConfirm={confirmAnalysisCreation}
+            />
           </IAContext.Provider>
         );
       }}

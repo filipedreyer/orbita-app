@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { ArrowRight, Clock3, Pin } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import type { Item } from '../../lib/types';
+import { IAConfirmationSheet } from './IAConfirmationSheet';
 import type { IASuggestResult, IASuggestionItem } from './types';
 
 function getSuggestionLabel(type: IASuggestionItem['type']) {
@@ -43,47 +45,65 @@ export function IASuggestCards({
   onApply: (suggestion: IASuggestionItem) => void;
   onIgnore: (suggestion: IASuggestionItem) => void;
 }) {
+  const [pendingSuggestion, setPendingSuggestion] = useState<IASuggestionItem | null>(null);
+
   if (result.suggestions.length === 0) return null;
 
   return (
-    <Card className="space-y-4 p-4">
-      <div>
-        <p className="text-sm font-semibold text-[var(--text)]">{title}</p>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">{summary}</p>
-      </div>
+    <>
+      <Card className="space-y-4 p-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">{title}</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">{summary}</p>
+        </div>
 
-      <div className="space-y-3">
-        {result.suggestions.map((suggestion) => {
-          const item = itemsById.get(suggestion.itemId);
-          if (!item) return null;
+        <div className="space-y-3">
+          {result.suggestions.map((suggestion) => {
+            const item = itemsById.get(suggestion.itemId);
+            if (!item) return null;
 
-          const label = getSuggestionLabel(suggestion.type);
-          const Icon = label.icon;
+            const label = getSuggestionLabel(suggestion.type);
+            const Icon = label.icon;
 
-          return (
-            <div key={`${suggestion.type}:${suggestion.itemId}`} className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] p-4">
-              <div className="flex items-start gap-3">
-                <div className="rounded-2xl bg-[var(--accent-soft)] p-2 text-[var(--accent)]">
-                  <Icon className="h-4 w-4" />
+            return (
+              <div key={`${suggestion.type}:${suggestion.itemId}`} className="rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] p-4">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-2xl bg-[var(--accent-soft)] p-2 text-[var(--accent)]">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-[var(--text)]">{label.title}</p>
+                    <p className="mt-1 text-sm text-[var(--text)]">{item.title}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">{suggestion.reason}</p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--text)]">{label.title}</p>
-                  <p className="mt-1 text-sm text-[var(--text)]">{item.title}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">{suggestion.reason}</p>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Button onClick={() => setPendingSuggestion(suggestion)}>{label.action}</Button>
+                  <Button variant="ghost" onClick={() => onIgnore(suggestion)}>
+                    Ignorar
+                  </Button>
                 </div>
               </div>
+            );
+          })}
+        </div>
+      </Card>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button onClick={() => onApply(suggestion)}>{label.action}</Button>
-                <Button variant="ghost" onClick={() => onIgnore(suggestion)}>
-                  Ignorar
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
+      <IAConfirmationSheet
+        visible={!!pendingSuggestion}
+        title={pendingSuggestion ? getSuggestionLabel(pendingSuggestion.type).title : 'Aplicar sugestao'}
+        description={pendingSuggestion ? `Revisar e aplicar a sugestao para "${itemsById.get(pendingSuggestion.itemId)?.title ?? 'item'}"?` : ''}
+        outputKind="acao_proposta"
+        confirmLabel="Aplicar com confirmacao"
+        onCancel={() => setPendingSuggestion(null)}
+        onConfirm={() => {
+          if (!pendingSuggestion) return;
+          onApply(pendingSuggestion);
+          setPendingSuggestion(null);
+        }}
+      />
+    </>
   );
 }

@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { IAContext } from './IAProvider';
+import { IAContext } from './IAContext';
 
 export function useIA() {
   const context = useContext(IAContext);

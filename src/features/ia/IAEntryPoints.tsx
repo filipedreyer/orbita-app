@@ -1,4 +1,4 @@
-import { Bot, FileText } from 'lucide-react';
+import { FileText, Lightbulb } from 'lucide-react';
 import { Button, Card } from '../../components/ui';
 import { useIA } from './useIA';
 
@@ -13,20 +13,20 @@ export function IAEntryPoints({
   description: string;
   compact?: boolean;
 }) {
-  const { openChat, openReports, routeContext } = useIA();
+  const { openIdea, openReports, routeContext } = useIA();
   const hasReports = routeContext.reports.length > 0;
 
   if (compact) {
     return (
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={openChat}>
-          <Bot className="h-4 w-4" />
-          Abrir chat
+        <Button variant="secondary" onClick={openIdea}>
+          <Lightbulb className="h-4 w-4" />
+          Abrir Idea
         </Button>
         {hasReports ? (
           <Button variant="ghost" onClick={openReports}>
             <FileText className="h-4 w-4" />
-            Ver relatorios
+            Ver relatorios na Idea
           </Button>
         ) : null}
       </div>
@@ -41,14 +41,14 @@ export function IAEntryPoints({
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" onClick={openChat}>
-          <Bot className="h-4 w-4" />
-          Abrir chat
+        <Button variant="secondary" onClick={openIdea}>
+          <Lightbulb className="h-4 w-4" />
+          Abrir Idea
         </Button>
         {hasReports ? (
           <Button variant="ghost" onClick={openReports}>
             <FileText className="h-4 w-4" />
-            Ver relatorios
+            Ver relatorios na Idea
           </Button>
         ) : null}
       </div>
