@@ -31,5 +31,5 @@
 export const tabRoutes = [
   { label: 'Fazer', path: routes.fazer },
   { label: 'Planejar', path: routes.planejar },
-  { label: 'Memoria', path: routes.memoria },
+  { label: 'Memória', path: routes.memoria },
 ] as const;
