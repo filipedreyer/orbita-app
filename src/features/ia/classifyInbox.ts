@@ -1,10 +1,10 @@
-import type { EntityType } from '../../lib/types';
+import type { CanonicalEntityType } from '../../lib/entity-domain';
 import { invokeAIFunction } from './invoke';
 
 const CLASSIFY_INBOX_TIMEOUT_MS = 6000;
 
 export type InboxClassificationSuggestion = {
-  suggestedType: Exclude<EntityType, 'lista'>;
+  suggestedType: Exclude<CanonicalEntityType, 'lista'>;
   suggestedLink: {
     kind: 'project' | 'goal' | 'none';
     label: string | null;
@@ -24,14 +24,12 @@ export type InboxClassificationPayload = {
 const ALLOWED_TYPES = new Set([
   'tarefa',
   'nota',
-  'ideia',
   'lembrete',
   'meta',
   'projeto',
   'habito',
   'rotina',
   'evento',
-  'inegociavel',
 ]);
 
 export function buildInboxClassificationPayload({

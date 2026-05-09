@@ -5,19 +5,13 @@ import { DatePickerField } from '../../components/common/DatePicker';
 import { useAuthStore, useDataStore } from '../../store';
 import { extractTags } from '../../utils/helpers';
 import type { CaptureType, EntityType, FrequencyType, PriorityLevel } from '../../lib/types';
+import { assertNewEntityType } from '../../lib/entity-domain';
+import { structuredCaptureTypeOptions } from './capture-types';
 
-const captureTypes: Array<{ key: string; label: string }> = [
-  { key: 'tarefa', label: 'Tarefa' },
-  { key: 'nota', label: 'Nota' },
-  { key: 'ideia', label: 'Ideia' },
-  { key: 'lembrete', label: 'Lembrete' },
-  { key: 'habito', label: 'Habito' },
-  { key: 'evento', label: 'Evento' },
-  { key: 'meta', label: 'Meta' },
-  { key: 'projeto', label: 'Projeto' },
-  { key: 'rotina', label: 'Rotina' },
-  { key: 'lista', label: 'Lista' },
-];
+const captureTypes: Array<{ key: string; label: string }> = structuredCaptureTypeOptions.map((option) => ({
+  key: option.type,
+  label: option.label,
+}));
 
 const priorityOptions = [
   { key: 'alta', label: 'Alta', color: 'var(--red)' },
@@ -141,6 +135,10 @@ export function StructuredCaptureForm({
 
   async function handleSave() {
     if (!title.trim() || !session?.user || saving) return;
+    assertNewEntityType(type);
+
+    if (type === 'lembrete' && !dueDate) return;
+
     setSaving(true);
 
     try {
