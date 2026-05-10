@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Camera, ImagePlus, Mic } from 'lucide-react';
 import { Button, Card, CardRow, Field, Input, PillSelector, Textarea } from '../../components/ui';
 import { DatePickerField } from '../../components/common/DatePicker';

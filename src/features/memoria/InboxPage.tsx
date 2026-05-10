@@ -1,6 +1,6 @@
 import { FileImage, FilePlus2, FileText, Sparkles, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../components/feedback/ActionFeedbackContext';
 import { Badge, Button, Card, Field, Input, PillSelector } from '../../components/ui';
 import type { CanonicalEntityType } from '../../lib/entity-domain';
 import { createInboxOriginMetadata, normalizeEntityType } from '../../lib/entity-domain';

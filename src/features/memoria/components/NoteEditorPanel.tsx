@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackContext';
 import { BottomSheet, Button, Input } from '../../../components/ui';
 import { RichTextEditor } from '../../../components/editor/RichTextEditor';
 import { IATextAnalyzer } from '../../ia/IATextAnalyzer';

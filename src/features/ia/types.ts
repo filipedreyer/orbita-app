@@ -83,7 +83,7 @@ export interface IAOnboardingStep {
   done: boolean;
 }
 
-export type IAOnboardingSuggestionType = 'meta' | 'projeto' | 'habito' | 'inegociavel';
+export type IAOnboardingSuggestionType = 'meta' | 'projeto' | 'habito' | 'essencial_protegido';
 
 export interface IAOnboardingSuggestion {
   type: IAOnboardingSuggestionType;

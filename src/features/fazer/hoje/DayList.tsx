@@ -3,6 +3,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Card } from '../../../components/ui/Card';
 import { CardRow } from '../../../components/ui/CardRow';
 import { Checkbox } from '../../../components/ui/Checkbox';
+import { getProtectedEssentialLabel } from '../domain/canonical';
 import { isOperationalCommitmentCoherent } from '../domain/ordering';
 
 export function DayList({
@@ -36,13 +37,13 @@ export function DayList({
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
-                <Badge label="Bloco fixo" tone="project" />
+                <Badge label={getProtectedEssentialLabel(item) ?? 'Legado'} tone="project" />
                 <Badge
                   label={getExecutionState?.(item)?.linked ? 'Direcao visivel' : 'Execucao solta'}
                   tone={getExecutionState?.(item)?.linked ? 'project' : 'attention'}
                 />
               </div>
-              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">inegociavel</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">legado convertido em Essencial protegido</p>
               {getExecutionState?.(item)?.context ? <p className="mt-2 text-xs text-[var(--text-secondary)]">{getExecutionState(item)?.context}</p> : null}
             </div>
           </CardRow>
@@ -52,6 +53,7 @@ export function DayList({
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-sm font-medium text-[var(--text)]">{item.title}</p>
+                {getProtectedEssentialLabel(item) ? <Badge label="Essencial protegido" tone="project" /> : null}
                 {isOperationalCommitmentCoherent(item) ? <Badge label="Assumido" tone="project" /> : null}
                 <Badge
                   label={getExecutionState?.(item)?.linked ? 'Direcao visivel' : 'Execucao solta'}

@@ -4,7 +4,7 @@ import { routes } from '../../app/routes';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { updatePassword } from '../../services/auth';
-import { useAuth } from './AuthProvider';
+import { useAuth } from './AuthContext';
 import { AuthShell } from './AuthShell';
 
 export function ResetPasswordPage() {

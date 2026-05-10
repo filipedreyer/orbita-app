@@ -1,10 +1,11 @@
 import { CalendarClock, Flag, FolderKanban, HeartPulse, ShieldCheck, Sparkles } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { Card, ProgressBar } from '../../components/ui';
 import { routes } from '../../app/routes';
 import { IAEntryPoints } from '../ia/IAEntryPoints';
 import { readSystemReviewWithAI } from '../ia/reviewSystem';
+import { isLegacyInegociavel } from '../../lib/entity-domain';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
 import { useHojeDomain } from '../../store/fazer';
@@ -14,7 +15,7 @@ const links = [
   { label: 'Metas', path: routes.planejarMetas, icon: Flag },
   { label: 'Projetos', path: routes.planejarProjetos, icon: FolderKanban },
   { label: 'Habitos', path: routes.planejarHabitos, icon: HeartPulse },
-  { label: 'Inegociaveis', path: routes.planejarInegociaveis, icon: ShieldCheck },
+  { label: 'Essencial protegido', path: routes.planejarInegociaveis, icon: ShieldCheck },
 ] as const;
 
 export function RevisaoSemanalPage() {
@@ -22,6 +23,7 @@ export function RevisaoSemanalPage() {
   const portfolio = usePlanejarPortfolio();
   const hojeDomain = useHojeDomain();
   const [systemReading, setSystemReading] = useState<string | null>(null);
+  const [reviewNow] = useState(() => Date.now());
   const completionRatio =
     portfolio.weeklyReview.projectsCount > 0
       ? Math.min(100, Math.round((portfolio.weeklyReview.completedThisWeek / portfolio.weeklyReview.projectsCount) * 100))
@@ -52,14 +54,14 @@ export function RevisaoSemanalPage() {
     (habit) => !hojeDomain.focusItems.some((item) => item.id === habit.id),
   );
 
-  const inegociaveisWithoutReflection = portfolio.inegociaveis.filter(
+  const protectedEssentialsWithoutReflection = [...portfolio.protectedEssentials, ...portfolio.inegociaveis].filter(
     (item) =>
       !hojeDomain.fixedInegociaveis.some((entry) => entry.id === item.id) &&
       !hojeDomain.capacityOnlyInegociaveis.some((entry) => entry.id === item.id),
   );
 
   const activeHojeItems = hojeDomain.focusItems;
-  const standaloneExecution = activeHojeItems.filter((item) => !item.goal_id && !item.project_id && item.type !== 'habito' && item.type !== 'rotina' && item.type !== 'inegociavel');
+  const standaloneExecution = activeHojeItems.filter((item) => !item.goal_id && !item.project_id && item.type !== 'habito' && item.type !== 'rotina' && !isLegacyInegociavel(item.type));
   const directionLinkedExecution = activeHojeItems.filter((item) => !standaloneExecution.some((entry) => entry.id === item.id));
 
   const longInactiveItems = items.filter((item) => {
@@ -67,7 +69,7 @@ export function RevisaoSemanalPage() {
     if (item.due_date) return false;
     const metadata = (item.metadata || {}) as Record<string, unknown>;
     if (metadata.inbox_needs_revisit === true) return false;
-    const ageMs = Date.now() - new Date(item.updated_at || item.created_at).getTime();
+    const ageMs = reviewNow - new Date(item.updated_at || item.created_at).getTime();
     return ageMs > 14 * 24 * 60 * 60 * 1000;
   });
 
@@ -77,41 +79,34 @@ export function RevisaoSemanalPage() {
     ...longInactiveItems,
   ].filter((item, index, collection) => collection.findIndex((entry) => entry.id === item.id) === index);
 
-  const reviewPayload = useMemo(() => ({
-    execution: {
-      activeCount: activeHojeItems.length,
-      completedRecent: portfolio.weeklyReview.completedThisWeek,
-      standaloneCount: standaloneExecution.length,
-      linkedCount: directionLinkedExecution.length,
-    },
-    risk: {
-      overdueCount: hojeDomain.overdueItems.length,
-      staleCount: longInactiveItems.length,
-      postponedCount: postponedNeedingRevisit.length,
-    },
-    direction: {
-      goalsWithoutExecution: goalsWithoutExecution.length,
-      projectsWithoutSteps: projectsWithoutExecution.length,
-      habitsNotReflected: habitsWithoutExecution.length,
-    },
-  }), [
-    activeHojeItems.length,
-    directionLinkedExecution.length,
-    goalsWithoutExecution.length,
-    habitsWithoutExecution.length,
-    hojeDomain.overdueItems.length,
-    longInactiveItems.length,
-    portfolio.weeklyReview.completedThisWeek,
-    postponedNeedingRevisit.length,
-    projectsWithoutExecution.length,
-    standaloneExecution.length,
-  ]);
-
   useEffect(() => {
     let cancelled = false;
-    setSystemReading(null);
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setSystemReading(null);
+      }
+    });
 
     async function loadSystemReading() {
+      const reviewPayload = {
+        execution: {
+          activeCount: activeHojeItems.length,
+          completedRecent: portfolio.weeklyReview.completedThisWeek,
+          standaloneCount: standaloneExecution.length,
+          linkedCount: directionLinkedExecution.length,
+        },
+        risk: {
+          overdueCount: hojeDomain.overdueItems.length,
+          staleCount: longInactiveItems.length,
+          postponedCount: postponedNeedingRevisit.length,
+        },
+        direction: {
+          goalsWithoutExecution: goalsWithoutExecution.length,
+          projectsWithoutSteps: projectsWithoutExecution.length,
+          habitsNotReflected: habitsWithoutExecution.length,
+        },
+      };
       const reading = await readSystemReviewWithAI(reviewPayload);
       if (!cancelled && reading) {
         setSystemReading(reading);
@@ -123,7 +118,18 @@ export function RevisaoSemanalPage() {
     return () => {
       cancelled = true;
     };
-  }, [reviewPayload]);
+  }, [
+    activeHojeItems.length,
+    directionLinkedExecution.length,
+    goalsWithoutExecution.length,
+    habitsWithoutExecution.length,
+    hojeDomain.overdueItems.length,
+    longInactiveItems.length,
+    portfolio.weeklyReview.completedThisWeek,
+    postponedNeedingRevisit.length,
+    projectsWithoutExecution.length,
+    standaloneExecution.length,
+  ]);
 
   function renderSimpleList(sectionItems: Item[], emptyLabel: string) {
     if (sectionItems.length === 0) {
@@ -155,7 +161,7 @@ export function RevisaoSemanalPage() {
           <div>
             <h3 className="text-xl font-semibold">Revisao semanal</h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Agregacao simples de metas, projetos, habitos e inegociaveis para revisar o sistema antes de voltar ao planejamento.
+              Agregacao simples de metas, projetos, habitos e essencial protegido para revisar o sistema antes de voltar ao planejamento.
             </p>
           </div>
         </div>
@@ -194,8 +200,8 @@ export function RevisaoSemanalPage() {
           <p className="text-3xl font-bold">{portfolio.weeklyReview.habitsCount}</p>
         </Card>
         <Card className="space-y-2 p-4">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Inegociaveis</p>
-          <p className="text-3xl font-bold">{portfolio.weeklyReview.inegociaveisCount}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Essencial protegido</p>
+          <p className="text-3xl font-bold">{portfolio.weeklyReview.protectedEssentialsCount}</p>
         </Card>
       </div>
 
@@ -253,7 +259,7 @@ export function RevisaoSemanalPage() {
               <p className="mt-1 text-sm text-[var(--text-secondary)]">O portfólio já mostra onde existe direção sem tração concreta em Fazer.</p>
             </div>
             <div className="rounded-[var(--radius-pill)] border border-[var(--warning)]/25 bg-[var(--warning)]/10 px-3 py-1 text-sm font-semibold text-[var(--text)]">
-              {goalsWithoutExecution.length + projectsWithoutExecution.length + habitsWithoutExecution.length + inegociaveisWithoutReflection.length}
+              {goalsWithoutExecution.length + projectsWithoutExecution.length + habitsWithoutExecution.length + protectedEssentialsWithoutReflection.length}
             </div>
           </div>
 
@@ -274,8 +280,8 @@ export function RevisaoSemanalPage() {
               <p className="mt-1 text-sm text-[var(--text-secondary)]">sem reflexo em Hoje</p>
             </div>
             <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Inegociáveis</p>
-              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{inegociaveisWithoutReflection.length}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Essencial protegido</p>
+              <p className="mt-2 text-2xl font-bold text-[var(--text)]">{protectedEssentialsWithoutReflection.length}</p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">sem reflexo no dia</p>
             </div>
           </div>

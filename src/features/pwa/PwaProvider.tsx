@@ -1,5 +1,6 @@
-﻿import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { PropsWithChildren } from 'react';
+import { PwaContext, type PwaContextValue } from './PwaContext';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -10,22 +11,12 @@ interface NavigatorWithStandalone extends Navigator {
   standalone?: boolean;
 }
 
-interface PwaContextValue {
-  canInstall: boolean;
-  isInstalled: boolean;
-  isOfflineReady: boolean;
-  isOnline: boolean;
-  installApp: () => Promise<boolean>;
-}
-
 function readInstalledState() {
   if (typeof window === 'undefined') return false;
   const mediaQuery = window.matchMedia('(display-mode: standalone)');
   const standaloneNavigator = navigator as NavigatorWithStandalone;
   return mediaQuery.matches || standaloneNavigator.standalone === true;
 }
-
-const PwaContext = createContext<PwaContextValue | null>(null);
 
 export function PwaProvider({ children }: PropsWithChildren) {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -80,12 +71,4 @@ export function PwaProvider({ children }: PropsWithChildren) {
   );
 
   return <PwaContext.Provider value={value}>{children}</PwaContext.Provider>;
-}
-
-export function usePwa() {
-  const context = useContext(PwaContext);
-  if (!context) {
-    throw new Error('usePwa must be used within PwaProvider');
-  }
-  return context;
 }

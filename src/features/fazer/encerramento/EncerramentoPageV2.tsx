@@ -112,7 +112,12 @@ export function EncerramentoPageV2() {
 
   useEffect(() => {
     let cancelled = false;
-    setClosingReading(null);
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setClosingReading(null);
+      }
+    });
 
     async function loadClosingReading() {
       const reading = await readEncerramentoWithAI(encerramentoPayload);
@@ -141,7 +146,7 @@ export function EncerramentoPageV2() {
       <Card className="space-y-3 p-4">
         <p className="text-sm font-semibold text-[var(--text)]">Antes de desligar</p>
         <p className="text-sm text-[var(--text-secondary)]">
-          O foco aqui e encerrar o ciclo do dia com nitidez. Nao e revisar o sistema inteiro, nem replanejar tudo agora.
+          A funcao aqui e encerrar o ciclo do dia com nitidez. Nao e revisar o sistema inteiro, nem replanejar tudo agora.
         </p>
       </Card>
 

@@ -3,6 +3,7 @@ import { Button, Card } from '../../components/ui';
 import { shiftLocalDate, today } from '../../lib/dates';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
+import { getCapacityStatus, toAISuggestCapacitySignal } from '../fazer/domain/canonical';
 import { deriveHojeDomain } from '../fazer/domain/derived';
 import { derivePlanejarPortfolio } from '../planejar/domain/derived';
 import { reportHojeWithAI } from './reportHoje';
@@ -23,12 +24,6 @@ function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
       item.type === 'rotina' ||
       item.type === 'inegociavel',
   );
-}
-
-function getDaySignal(count: number, operationalHours: number): 'balanced' | 'loaded' | 'overloaded' {
-  if (count > operationalHours + 1) return 'overloaded';
-  if (count >= operationalHours) return 'loaded';
-  return 'balanced';
 }
 
 export function IAReportPanel({ context, active }: { context: IARouteContext; active: boolean }) {
@@ -52,17 +47,16 @@ export function IAReportPanel({ context, active }: { context: IARouteContext; ac
     () =>
       Array.from({ length: 3 }, (_, index) => {
         const date = shiftDay(referenceDate, index + 1);
-        const scheduledCount = items.filter(
-          (item) => item.status === 'active' && item.due_date === date && item.type !== 'evento' && item.type !== 'lembrete',
-        ).length;
+        const scheduledItems = items.filter((item) => item.status === 'active' && item.due_date === date);
+        const capacity = getCapacityStatus(scheduledItems, date, hoje.capacity.totalHours);
 
         return {
           date,
-          signal: getDaySignal(scheduledCount, hoje.capacity.operationalHours),
-          scheduledCount,
+          signal: toAISuggestCapacitySignal(capacity.signal),
+          scheduledCount: scheduledItems.length,
         };
       }),
-    [hoje.capacity.operationalHours, items, referenceDate],
+    [hoje.capacity.totalHours, items, referenceDate],
   );
 
   useEffect(() => {
@@ -76,7 +70,7 @@ export function IAReportPanel({ context, active }: { context: IARouteContext; ac
           if (report.id === 'reportHoje') {
             const result = await reportHojeWithAI({
               capacity: {
-                signal: getDaySignal(hoje.focusItems.length, hoje.capacity.operationalHours),
+                signal: toAISuggestCapacitySignal(hoje.capacity.signal),
                 focusCount: hoje.focusItems.length,
                 overdueCount: hoje.overdueItems.length,
               },
@@ -94,7 +88,7 @@ export function IAReportPanel({ context, active }: { context: IARouteContext; ac
             const result = await reportTimelineWithAI({
               selectedDay: {
                 date: referenceDate,
-                signal: getDaySignal(hoje.focusItems.length, hoje.capacity.operationalHours),
+                signal: toAISuggestCapacitySignal(hoje.capacity.signal),
                 itemCount: hoje.focusItems.length,
                 operationalHours: hoje.capacity.operationalHours,
               },
@@ -209,4 +203,3 @@ export function IAReportPanel({ context, active }: { context: IARouteContext; ac
     </div>
   );
 }
-

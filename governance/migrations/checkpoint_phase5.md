@@ -82,3 +82,12 @@ Nenhum erro novo foi identificado nos arquivos alterados/criados pela Fase 5.
 2. Auditar Supabase schema, RLS, ownership, buckets e signed URLs.
 3. Formalizar Admin por role/claim.
 4. Preparar inventario de dados antes de migrar `ideia` e `inegociavel`.
+
+## Referencia pos-checkpoint
+
+A Fase 6 deve registrar seus resultados em:
+
+- `governance/migrations/security_phase_6_audit.md`
+- `governance/migrations/rls_policy_plan.md`
+- `governance/migrations/storage_security_plan.md`
+- `governance/migrations/admin_role_plan.md`

@@ -1,5 +1,3 @@
-import { useMemo } from 'react';
-import type { ReactNode } from 'react';
 import { today } from '../../lib/dates';
 import type { InboxItem, Item } from '../../lib/types';
 import { deriveHojeDomain } from '../fazer/domain/derived';
@@ -64,9 +62,9 @@ export function buildIAContext({
       title: 'IA de execucao do dia',
       subtitle: 'Mocks focados em priorizacao, capacidade e conflito com inegociaveis.',
       visibleContext: [
-        `${hoje.focusItems.length} itens no foco`,
+        `${hoje.focusItems.length} itens no dia`,
         `${hoje.overdueItems.length} atrasados`,
-        `${hoje.capacity.operationalHours.toFixed(1)}h livres`,
+        hoje.capacity.committedHours === null ? `capacidade ${hoje.capacity.completeness}` : `${hoje.capacity.committedHours.toFixed(1)}h mapeadas`,
       ],
       suggestions: isRitual
         ? [
@@ -88,7 +86,7 @@ export function buildIAContext({
                 'Ler conflitos da Timeline',
                 'Mock visual para detectar choque entre carga, dependencias e blocos fixos.',
                 [
-                  action('fazer-organizar-timeline', 'Organizar blocos', 'Organizar', 'Redistribuir foco sem alterar a arquitetura do dia.'),
+                  action('fazer-organizar-timeline', 'Organizar blocos', 'Organizar', 'Redistribuir a execucao sem alterar a arquitetura do dia.'),
                   action('fazer-ajustar-dependencias', 'Ajustar dependencia', 'Ajustar', 'Sinalizar o proximo elo critico da cadeia.'),
                 ],
                 hoje.blockedInegociaveis.length > 0 ? 'warning' : 'neutral',
@@ -101,16 +99,16 @@ export function buildIAContext({
                 'Ajuste visual para aliviar excesso de carga e abrir espaco para o que e inegociavel.',
                 [
                   action('fazer-reprogramar', 'Reprogramar bloco', 'Reprogramar', 'Mover um lote de itens de menor impacto.'),
-                  action('fazer-ajustar', 'Ajustar sequencia', 'Ajustar', 'Reordenar o foco mantendo a estrutura do Ritual.'),
+                  action('fazer-ajustar', 'Ajustar sequencia', 'Ajustar', 'Reordenar a execucao mantendo a estrutura do Ritual.'),
                 ],
-                hoje.capacity.operationalHours < 2 ? 'warning' : 'support',
+                hoje.capacity.signal === 'overloaded' ? 'warning' : 'support',
               ),
             ],
       reports: isRitual
         ? []
         : isTimeline
           ? [report('reportTimeline', 'Leitura da Timeline', 'Distribuicao de curto prazo e pressao entre dias proximos.', [])]
-          : [report('reportHoje', 'Leitura de Hoje', 'Balanceamento do dia, foco e risco imediato.', [])],
+          : [report('reportHoje', 'Leitura de Hoje', 'Balanceamento do dia, direcao e risco imediato.', [])],
       chatMessages: [
         assistantMessage('fazer-msg-1', 'Posso ajudar a redistribuir o dia sem mexer no que o Ritual ja consolidou.'),
         assistantMessage('fazer-msg-2', 'Os mocks desta tela priorizam excesso de capacidade, inegociaveis e replanejamento simples.'),
@@ -268,19 +266,4 @@ export function buildIAContext({
       onboardingStep('planejar-onboarding-3', 'Proteger a agenda', 'Validar inegociaveis antes de intensificar o plano.', portfolio.inegociaveis.length > 0),
     ],
   };
-}
-
-export function IAContextBuilder({
-  pathname,
-  items,
-  inbox,
-  children,
-}: {
-  pathname: string;
-  items: Item[];
-  inbox: InboxItem[];
-  children: (context: IARouteContext) => ReactNode;
-}) {
-  const context = useMemo(() => buildIAContext({ pathname, items, inbox }), [inbox, items, pathname]);
-  return <>{children(context)}</>;
 }

@@ -15,7 +15,7 @@ type BuilderStep = {
 
 type SuggestionDraft = {
   id: string;
-  type: 'meta' | 'projeto' | 'habito' | 'inegociavel';
+  type: 'meta' | 'projeto' | 'habito' | 'essencial_protegido';
   title: string;
   description: string;
   linkedTo?: string;
@@ -48,9 +48,9 @@ const steps: BuilderStep[] = [
   },
   {
     key: 'inegociaveis',
-    label: 'Inegociaveis',
-    title: 'Inegociaveis',
-    description: 'Liste restricoes ou protecoes que precisam existir no sistema.',
+    label: 'Essencial',
+    title: 'Essencial protegido',
+    description: 'Liste protecoes importantes para aplicar como condicao a entidades existentes.',
     placeholder: 'Ex.: bloco sem reunioes de manha, sono minimo, treino como prioridade fixa.',
   },
 ];
@@ -83,9 +83,9 @@ export function PlanOnboardingBuilder() {
       goals: portfolio.goals.map((goal) => ({ id: goal.id, title: goal.title })),
       projects: portfolio.projects.map((project) => ({ id: project.id, title: project.title, goal_id: project.goal_id })),
       habits: portfolio.habits.map((habit) => ({ id: habit.id, title: habit.title })),
-      inegociaveis: portfolio.inegociaveis.map((item) => ({ id: item.id, title: item.title })),
+      inegociaveis: portfolio.protectedEssentials.map((item) => ({ id: item.id, title: item.title })),
     }),
-    [portfolio.goals, portfolio.habits, portfolio.inegociaveis, portfolio.projects],
+    [portfolio.goals, portfolio.habits, portfolio.projects, portfolio.protectedEssentials],
   );
 
   const currentDrafts = drafts[currentStep.key].filter((draft) => !draft.ignored);
@@ -201,7 +201,7 @@ export function PlanOnboardingBuilder() {
       });
     }
 
-    if (draft.type === 'inegociavel') {
+    if (draft.type === 'essencial_protegido') {
       updateDraft(draft.id, { accepted: false, ignored: true });
       return;
     }
@@ -239,7 +239,7 @@ export function PlanOnboardingBuilder() {
           <div>
             <p className="text-sm font-semibold text-[var(--text)]">Estrutura guiada de Planejar</p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Um fluxo simples para transformar entrada curta em metas, projetos, habitos e inegociaveis sugeridos.
+              Um fluxo simples para transformar entrada curta em metas, projetos, habitos e protecoes essenciais sugeridas.
             </p>
           </div>
           <Button onClick={() => setOpen(true)}>

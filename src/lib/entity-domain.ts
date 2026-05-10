@@ -88,8 +88,37 @@ export interface EssentialProtectionMetadata {
   essential_reason?: string;
 }
 
-export function isEssentialProtected(metadata: Record<string, unknown> | null | undefined) {
+export const protectedEssentialEligibleTypes = ['meta', 'projeto', 'tarefa', 'habito', 'rotina'] as const satisfies readonly CanonicalEntityType[];
+
+export type ProtectedEssentialEligibleType = (typeof protectedEssentialEligibleTypes)[number];
+
+export function canReceiveProtectedEssential(type: unknown): type is ProtectedEssentialEligibleType {
+  return typeof type === 'string' && protectedEssentialEligibleTypes.includes(type as ProtectedEssentialEligibleType);
+}
+
+export function isProtectedEssential(metadata: Record<string, unknown> | null | undefined) {
   return metadata?.essential_protected === true || metadata?.essencial_protegido === true;
+}
+
+export const isEssentialProtected = isProtectedEssential;
+
+export function applyProtectedEssentialFlag<T extends Record<string, unknown> | null | undefined>(
+  metadata: T,
+  reason?: string,
+): Record<string, unknown> {
+  return {
+    ...(metadata ?? {}),
+    essential_protected: true,
+    ...(reason ? { essential_reason: reason } : {}),
+  };
+}
+
+export function isLegacyInegociavel(type: unknown): type is 'inegociavel' {
+  return type === 'inegociavel';
+}
+
+export function normalizeLegacyInegociavel(type: unknown): CanonicalEntityType | null {
+  return isLegacyInegociavel(type) ? legacyEntityTypeMap.inegociavel : normalizeEntityType(type);
 }
 
 export interface InboxOriginMetadata {

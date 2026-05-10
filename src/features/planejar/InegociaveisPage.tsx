@@ -1,175 +1,116 @@
-import { Plus, ShieldCheck } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import { Badge, Button, Card } from '../../components/ui';
-import type { InegociavelMetadata, Item } from '../../lib/types';
-import { useAuthStore, useDataStore } from '../../store';
-import { useHojeDomain } from '../../store/fazer';
+import { applyProtectedEssentialFlag, canReceiveProtectedEssential } from '../../lib/entity-domain';
+import type { Item } from '../../lib/types';
+import { useDataStore } from '../../store';
 import { usePlanejarPortfolio } from '../../store/planejar';
 import { EntitySheetWrapper } from '../entity/EntitySheetWrapper';
-import { PlanningItemEditorPanel, type PlanningEditorValues } from './PlanningItemEditorPanel';
-
-function formatRuleLabel(metadata: InegociavelMetadata) {
-  switch (metadata.regra_tipo) {
-    case 'bloco_tempo':
-      return metadata.horario_inicio && metadata.horario_fim
-        ? `Bloco ${metadata.horario_inicio} - ${metadata.horario_fim}`
-        : 'Bloco de tempo';
-    case 'frequencia':
-      return metadata.vezes_por_semana ? `${metadata.vezes_por_semana}x por semana` : 'Frequencia semanal';
-    case 'limite':
-      return metadata.limite_horas ? `Limite de ${metadata.limite_horas}h` : 'Limite de horas';
-    default:
-      return 'Regra basica';
-  }
-}
 
 export function InegociaveisPage() {
-  const session = useAuthStore((state) => state.session);
   const updateItem = useDataStore((state) => state.updateItem);
   const portfolio = usePlanejarPortfolio();
-  const hojeDomain = useHojeDomain();
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const [editingItem, setEditingItem] = useState<Item | null>(null);
-  const [creating, setCreating] = useState(false);
 
-  const cards = useMemo(
-    () =>
-      portfolio.inegociaveis.map((item) => {
-        const metadata = ((item.metadata as InegociavelMetadata | null) ?? {
-          regra_tipo: 'bloco_tempo',
-        }) as InegociavelMetadata;
+  const candidates = portfolio.protectedEssentialCandidates.filter((item) => canReceiveProtectedEssential(item.type)).slice(0, 6);
 
-        return {
-          item,
-          metadata,
-          label: formatRuleLabel(metadata),
-          hoursPerDay: typeof metadata.horas_por_dia === 'number' ? metadata.horas_por_dia : null,
-          isFixedToday: hojeDomain.fixedInegociaveis.some((entry: Item) => entry.id === item.id),
-          isCapacityOnlyToday: hojeDomain.capacityOnlyInegociaveis.some((entry: Item) => entry.id === item.id),
-        };
-      }),
-    [hojeDomain.capacityOnlyInegociaveis, hojeDomain.fixedInegociaveis, portfolio.inegociaveis],
-  );
-  const inegociaveisWithoutReflectionCount = cards.filter((card) => !card.isFixedToday && !card.isCapacityOnlyToday).length;
+  async function protectItem(item: Item) {
+    if (!canReceiveProtectedEssential(item.type)) return;
 
-  async function handleSave(values: PlanningEditorValues) {
-    if (!session?.user) return;
-
-    const metadata: InegociavelMetadata = {
-      regra_tipo: values.ruleType,
-      horas_por_dia: values.hoursPerDay ? Number(values.hoursPerDay) : undefined,
-      horario_inicio: values.startTime || undefined,
-      horario_fim: values.endTime || undefined,
-    };
-
-    if (editingItem) {
-      await updateItem(editingItem.id, {
-        title: values.title,
-        description: values.description,
-        metadata,
-      });
-      return;
-    }
-
-    setCreating(false);
+    await updateItem(item.id, {
+      metadata: applyProtectedEssentialFlag(item.metadata as Record<string, unknown>, 'Protecao aplicada em Planejar.'),
+    });
   }
 
   return (
     <div className="space-y-4">
       <Card className="space-y-3 p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-[var(--radius-2xl)] bg-[var(--accent-soft)] p-3 text-[var(--accent)]">
+            <ShieldCheck className="h-5 w-5" />
+          </div>
           <div>
-            <h3 className="text-xl font-semibold">Inegociaveis</h3>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              Registros legados continuam legiveis. Novos essenciais protegidos serao migrados como condicao/flag em fase propria.
+            <h3 className="text-xl font-semibold">Essencial protegido</h3>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Condicao aplicada a metas, projetos, tarefas, habitos e rotinas elegiveis. Nao cria entidade nova e nao torna nada automaticamente urgente.
             </p>
           </div>
-          <Button onClick={() => setCreating(true)} disabled>
-            <Plus className="h-4 w-4" />
-            Novo legado bloqueado
-          </Button>
         </div>
       </Card>
 
-      {inegociaveisWithoutReflectionCount > 0 ? (
-        <Card className="border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
-          <p className="text-sm font-semibold text-[var(--text)]">{inegociaveisWithoutReflectionCount} inegociáveis sem reflexo claro no dia</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">As restrições existem em Planejar, mas parte delas ainda não se torna perceptível na leitura operacional de Hoje.</p>
-        </Card>
-      ) : null}
-
-      <div className="grid gap-4">
-        {cards.map(({ item, metadata, label, hoursPerDay, isFixedToday, isCapacityOnlyToday }) => (
-          <Card key={item.id} className="space-y-4 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-[var(--teal)]" />
-                  <p className="text-lg font-semibold">{item.title}</p>
+      <Card className="space-y-4 p-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">Itens protegidos</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Leitura atual das entidades canonicas com flag de protecao.</p>
+        </div>
+        {portfolio.protectedEssentials.length > 0 ? (
+          <div className="grid gap-3">
+            {portfolio.protectedEssentials.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text)]">{item.title}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
                 </div>
-                <p className="mt-2 text-sm text-[var(--text-secondary)]">{item.description || 'Sem descricao ainda.'}</p>
+                <div className="flex gap-2">
+                  <Badge label="Essencial protegido" tone="project" />
+                  <Button variant="ghost" onClick={() => setSelectedItem(item)}>Abrir</Button>
+                </div>
               </div>
-              <Badge label={label} />
-            </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--text-secondary)]">Nenhuma entidade canonica protegida ainda.</p>
+        )}
+      </Card>
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Regra</p>
-                <p className="mt-2 text-sm font-semibold capitalize text-[var(--text)]">{metadata.regra_tipo.replace('_', ' ')}</p>
+      <Card className="space-y-4 p-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">Aplicar protecao</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Escolha itens existentes. A protecao vira metadata, nao entidade.</p>
+        </div>
+        {candidates.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {candidates.map((item) => (
+              <div key={item.id} className="space-y-3 rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface)] p-4">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text)]">{item.title}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+                </div>
+                <Button variant="secondary" onClick={() => void protectItem(item)}>
+                  Aplicar Essencial protegido
+                </Button>
               </div>
-              <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Horas / dia</p>
-                <p className="mt-2 text-sm font-semibold text-[var(--text)]">{hoursPerDay ? `${hoursPerDay}h` : 'Nao definido'}</p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--text-secondary)]">Nao ha candidatos canonicos disponiveis agora.</p>
+        )}
+      </Card>
+
+      <Card className="space-y-4 border-[var(--warning)]/25 bg-[var(--warning)]/10 p-4">
+        <div>
+          <p className="text-sm font-semibold text-[var(--text)]">Registros legados</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Dados antigos continuam legiveis ate inventario e migracao segura.</p>
+        </div>
+        {portfolio.inegociaveis.length > 0 ? (
+          <div className="grid gap-3">
+            {portfolio.inegociaveis.map((item) => (
+              <div key={item.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-2xl)] border border-[var(--warning)]/25 bg-[var(--surface)] px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text)]">{item.title}</p>
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">Tipo legado preservado como leitura de Essencial protegido.</p>
+                </div>
+                <Button variant="ghost" onClick={() => setSelectedItem(item)}>Abrir legado</Button>
               </div>
-              <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Janela</p>
-                <p className="mt-2 text-sm font-semibold text-[var(--text)]">
-                  {metadata.horario_inicio && metadata.horario_fim ? `${metadata.horario_inicio} - ${metadata.horario_fim}` : 'Sem horario fixo'}
-                </p>
-              </div>
-            </div>
-
-            <div className={`rounded-2xl border px-4 py-3 text-sm ${isFixedToday || isCapacityOnlyToday ? 'border-[var(--accent-border)] bg-[var(--surface)] text-[var(--text-secondary)]' : 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'}`}>
-              <p className="font-semibold">
-                {isFixedToday ? 'Reflexo operacional claro' : isCapacityOnlyToday ? 'Reflexo parcial no dia' : 'Sem reflexo visível no dia'}
-              </p>
-              <p className="mt-1">
-                {isFixedToday
-                  ? 'Este inegociável já aparece na lógica do dia como bloco operacional.'
-                  : isCapacityOnlyToday
-                    ? 'Este inegociável impacta a capacidade do dia, mas ainda sem bloco operacional claro.'
-                    : 'Gap de execução: existe no portfólio, mas não está evidente na leitura atual de Hoje.'}
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => setSelectedItem(item)}>
-                Abrir
-              </Button>
-              <Button variant="ghost" onClick={() => setEditingItem(item)}>
-                Editar
-              </Button>
-            </div>
-          </Card>
-        ))}
-
-        {cards.length === 0 ? <Card className="p-6 text-sm text-[var(--text-secondary)]">Nenhum inegociavel criado ainda.</Card> : null}
-      </div>
-
-      <PlanningItemEditorPanel
-        visible={creating || !!editingItem}
-        mode="inegociavel"
-        item={editingItem}
-        goals={portfolio.goals}
-        onClose={() => {
-          setCreating(false);
-          setEditingItem(null);
-        }}
-        onSave={handleSave}
-      />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[var(--text-secondary)]">Nenhum registro legado encontrado.</p>
+        )}
+      </Card>
 
       {selectedItem ? (
-        <EntitySheetWrapper item={selectedItem} visible={!!selectedItem} onClose={() => setSelectedItem(null)} onEdit={() => setEditingItem(selectedItem)} />
+        <EntitySheetWrapper item={selectedItem} visible={!!selectedItem} onClose={() => setSelectedItem(null)} onEdit={() => setSelectedItem(null)} />
       ) : null}
     </div>
   );

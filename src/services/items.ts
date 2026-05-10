@@ -1,5 +1,6 @@
 ﻿import { getSupabase } from '../lib/supabase';
 import type { HabitLog, InboxItem, Item, SubItem } from '../lib/types';
+import { uploadPersonalAttachment } from './storage';
 
 export async function fetchItems(userId: string): Promise<Item[]> {
   const { data, error } = await getSupabase().from('items').select('*').eq('user_id', userId).neq('status', 'archived').order('created_at', { ascending: false });
@@ -124,12 +125,7 @@ export async function fetchHabitLogByDate(userId: string, itemId: string, checke
 }
 
 export async function uploadImage(userId: string, uri: string, fileName: string): Promise<string> {
-  const response = await fetch(uri);
-  const blob = await response.blob();
-  const path = `${userId}/${Date.now()}_${fileName}`;
-  const { error } = await getSupabase().storage.from('media').upload(path, blob, { contentType: blob.type });
-  if (error) throw error;
-  const { data } = getSupabase().storage.from('media').getPublicUrl(path);
-  return data.publicUrl;
+  const upload = await uploadPersonalAttachment(userId, uri, fileName);
+  return upload.legacyImageUrl;
 }
 

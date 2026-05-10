@@ -17,3 +17,12 @@
 | Agenda versus Evento | Aceito temporariamente | Agenda e superficie/categoria; persiste como `evento` ate decisao de schema. |
 | Lembrete sem data em fluxo novo | Mitigada | `StructuredCaptureForm` bloqueia criacao de lembrete sem data. |
 | Anexos via `image_url` legado | Divida | Documentado como metadata/storage provisoria; correcao real pertence a fase de seguranca/storage. |
+
+## Atualizacao Fase 7
+
+| Divergencia | Status | Decisao |
+|---|---|---|
+| Essencial protegido sem helper operacional | Mitigada | Helpers canonicos adicionados em `entity-domain.ts`. |
+| Planejar usando inegociavel como superficie vigente | Mitigada | Rota compativel agora exibe/aplica Essencial protegido e separa legado. |
+| Fazer tratando legado como cuidado automatico | Mitigada | Protecao nao entra em atencao/cuidado apenas por existir. |
+| IA onboarding emitindo `inegociavel` | Mitigada no frontend | Resposta legada e normalizada para `essencial_protegido`; backend ainda e divida. |

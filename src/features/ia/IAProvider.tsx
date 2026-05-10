@@ -1,10 +1,10 @@
-﻿import type { PropsWithChildren } from 'react';
+import type { PropsWithChildren } from 'react';
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuthStore, useDataStore } from '../../store';
 import { IAConfirmationSheet } from './IAConfirmationSheet';
 import { IAContext } from './IAContext';
-import { IAContextBuilder } from './IAContextBuilder';
+import { IAContextBuilder } from './IAContextBuilderView';
 import { IdeaSurface, type IdeaSurfaceMode } from './IdeaSurface';
 import { analyzeTextWithAI } from './analyzeText';
 import { orchestrateChatMessage } from './chat';

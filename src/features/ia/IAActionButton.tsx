@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { Check, Sparkles } from 'lucide-react';
-import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../components/feedback/ActionFeedbackContext';
 import { Button } from '../../components/ui';
 import type { IAActionDescriptor } from './types';
 

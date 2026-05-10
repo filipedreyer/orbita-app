@@ -57,3 +57,13 @@ Leitura legada permanece permitida ate inventario seguro. Criacao nova, duplicac
 - Agenda permanece como superficie/categoria provisoria e persiste tecnicamente como `evento` ate decisao de schema.
 - Evento e entidade distinta de item executavel.
 - Lembrete deve ter data para ser criado em fluxos novos.
+
+## Essencial protegido - Fase 7
+
+- Essencial protegido e condicao/flag, nao entidade.
+- Pode ser aplicado apenas a entidades elegiveis: `meta`, `projeto`, `tarefa`, `habito`, `rotina`.
+- Nao significa automaticamente urgente.
+- Nao significa automaticamente atrasado.
+- Nao significa sempre executar hoje.
+- O helper canonico fica em `src/lib/entity-domain.ts`: `isProtectedEssential`, `canReceiveProtectedEssential`, `applyProtectedEssentialFlag`, `isLegacyInegociavel`, `normalizeLegacyInegociavel`.
+- `inegociavel` permanece apenas como leitura legada ate inventario e migracao segura.

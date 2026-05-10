@@ -12,7 +12,7 @@ const cards = [
   { label: 'Metas', path: routes.planejarMetas, icon: Flag, description: 'Direcao e resultados de medio prazo.' },
   { label: 'Projetos', path: routes.planejarProjetos, icon: FolderKanban, description: 'Frentes concretas que precisam de avanco.' },
   { label: 'Habitos', path: routes.planejarHabitos, icon: HeartPulse, description: 'Ciclos recorrentes que sustentam o sistema.' },
-  { label: 'Inegociaveis', path: routes.planejarInegociaveis, icon: ShieldCheck, description: 'Restricoes e protecoes estruturais.' },
+  { label: 'Essencial protegido', path: routes.planejarInegociaveis, icon: ShieldCheck, description: 'Condicao aplicada ao que precisa de protecao sistemica.' },
 ] as const;
 
 export function PlanearHomePage() {
@@ -26,7 +26,7 @@ export function PlanearHomePage() {
           <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--text-tertiary)]">Planejar</p>
           <h2 className="mt-2 text-3xl font-bold tracking-[-0.04em]">Portfolio do sistema</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-            Planejar segue a estrutura final da spec: Metas, Projetos, Habitos, Inegociaveis e Revisao Semanal como superficies reais.
+            Planejar segue a estrutura final da spec: Metas, Projetos, Habitos, Essencial protegido e Revisao Semanal como superficies reais.
           </p>
         </div>
         <NavLink to={routes.planejarRevisaoSemanal}>
@@ -42,7 +42,7 @@ export function PlanearHomePage() {
       <OnboardingChecklist
         area="planejar"
         title="Como ler o portfolio de Planejar"
-        description="Comece pelas metas, desdobre em projetos, acompanhe habitos e proteja o sistema com inegociaveis."
+        description="Comece pelas metas, desdobre em projetos, acompanhe habitos e aplique Essencial protegido como condicao, nao como entidade."
         primaryLabel="Abrir Metas"
         onPrimaryAction={() => navigate(routes.planejarMetas)}
         steps={[

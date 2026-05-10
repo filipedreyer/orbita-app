@@ -1,16 +1,17 @@
-﻿import { Download, LifeBuoy, LogOut, MonitorSmartphone, PlayCircle, Settings2, ShieldCheck, Sparkles } from 'lucide-react';
+import { Download, LifeBuoy, LogOut, MonitorSmartphone, PlayCircle, Settings2, ShieldCheck, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { routes } from '../../app/routes';
-import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../components/feedback/ActionFeedbackContext';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
-import { useAuth } from '../auth/AuthProvider';
+import { useAdminRole } from '../admin/useAdminRole';
+import { useAuth } from '../auth/AuthContext';
 import { CSV_EXPORT_NOTE, downloadCsvEntityExports, downloadJsonExport, type ExportPayload } from './export-utils';
-import { useOnboarding } from '../onboarding/OnboardingProvider';
-import { usePwa } from '../pwa/PwaProvider';
+import { useOnboarding } from '../onboarding/OnboardingContext';
+import { usePwa } from '../pwa/PwaContext';
 import * as itemsService from '../../services/items';
 import * as profileService from '../../services/profile';
 import { useAuthStore, useDataStore } from '../../store';
@@ -32,6 +33,7 @@ export function CentralPage() {
   const inbox = useDataStore((state) => state.inbox);
   const ritualOrder = useDataStore((state) => state.ritualOrder);
   const { resetAll } = useOnboarding();
+  const adminRole = useAdminRole();
   const { showFeedback } = useActionFeedback();
   const pwa = usePwa();
   const [section, setSection] = useState<CentralSection>('guia');
@@ -149,12 +151,19 @@ export function CentralPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to={routes.centralAdmin}>
-            <Button variant="secondary">
+          {adminRole.isAdmin ? (
+            <Link to={routes.centralAdmin}>
+              <Button variant="secondary">
+                <ShieldCheck className="h-4 w-4" />
+                Admin
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="secondary" disabled title={adminRole.reason}>
               <ShieldCheck className="h-4 w-4" />
-              Admin
+              Admin protegido
             </Button>
-          </Link>
+          )}
           <Button variant="ghost" onClick={() => navigate(routes.fazerHoje)}>
             Voltar ao app
           </Button>
@@ -288,9 +297,13 @@ export function CentralPage() {
             )}
             <div className="flex flex-wrap gap-2">
               <Button onClick={() => void handleSaveSettings()} loading={savingSettings}>Salvar configuracoes</Button>
-              <Link to={routes.centralAdmin}>
-                <Button variant="secondary">Abrir Admin</Button>
-              </Link>
+              {adminRole.isAdmin ? (
+                <Link to={routes.centralAdmin}>
+                  <Button variant="secondary">Abrir Admin</Button>
+                </Link>
+              ) : (
+                <Button variant="secondary" disabled title={adminRole.reason}>Admin protegido</Button>
+              )}
             </div>
           </Card>
 

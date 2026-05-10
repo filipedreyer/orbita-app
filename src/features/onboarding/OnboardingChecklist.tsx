@@ -1,7 +1,7 @@
-﻿import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useOnboarding } from './OnboardingProvider';
+import { useOnboarding } from './OnboardingContext';
 
 type OnboardingArea = 'fazer' | 'memoria' | 'planejar';
 
