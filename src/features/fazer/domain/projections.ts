@@ -9,6 +9,8 @@ export function projectHojeSections(items: Item[], referenceDate: string, ritual
       attentionLevel: domain.attentionLevel,
       dayItemsCount: domain.focusItems.length,
       operationalHours: domain.capacity.operationalHours,
+      capacity: domain.capacity,
+      direction: domain.direction,
       overdueCount: domain.overdueItems.length,
     },
     sections: {
@@ -23,7 +25,7 @@ export function projectHojeSections(items: Item[], referenceDate: string, ritual
       reasons: [
         domain.overdueItems.length > 0 ? `${domain.overdueItems.length} pendências atrasadas` : null,
         domain.capacity.overloadByItems > 0 ? `sobrecarga de ${domain.capacity.overloadByItems} itens` : null,
-        domain.blockedInegociaveis.length > 0 ? `${domain.blockedInegociaveis.length} inegociáveis comprometidos` : null,
+        domain.blockedInegociaveis.length > 0 ? `${domain.blockedInegociaveis.length} legados de essencial protegido pedem revisao` : null,
       ].filter(Boolean) as string[],
     },
     timeline: {

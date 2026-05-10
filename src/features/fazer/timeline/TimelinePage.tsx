@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackContext';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { EntitySheetWrapper } from '../../entity/EntitySheetWrapper';
@@ -11,6 +11,13 @@ import type { Item } from '../../../lib/types';
 import { shiftLocalDate } from '../../../lib/dates';
 import { useDataStore } from '../../../store';
 import { useHojeDomain, useHojeProjection } from '../../../store/fazer';
+import {
+  getCapacityStatus,
+  getDependencyImpact,
+  getTimelineLens,
+  toAISuggestCapacitySignal,
+  type TimelineLens,
+} from '../domain/canonical';
 import { ChainList } from './ChainList';
 import { ImpactAnalysis } from './ImpactAnalysis';
 import { IndentedTree } from './IndentedTree';
@@ -30,19 +37,13 @@ function shiftDay(date: string, days: number) {
   return shiftLocalDate(date, days);
 }
 
-function getDaySignal(count: number, operationalHours: number): 'balanced' | 'loaded' | 'overloaded' {
-  if (count > operationalHours + 1) return 'overloaded';
-  if (count >= operationalHours) return 'loaded';
-  return 'balanced';
-}
-
 export function TimelinePage() {
   const domain = useHojeDomain();
   const projection = useHojeProjection();
   const allItems = useDataStore((state) => state.items);
   const rescheduleItem = useDataStore((state) => state.rescheduleItem);
   const updateItem = useDataStore((state) => state.updateItem);
-  const [mode, setMode] = useState<'capacity' | 'dependencies'>('capacity');
+  const [mode, setMode] = useState<TimelineLens>(getTimelineLens('calendar'));
   const [dependencyView, setDependencyView] = useState<'chains' | 'tree'>('chains');
   const [selectedChainId, setSelectedChainId] = useState<string | null>(domain.dependencyTimeline.chains[0]?.id ?? null);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
@@ -62,28 +63,39 @@ export function TimelinePage() {
   );
 
   const itemsById = useMemo(() => new Map(allItems.map((item) => [item.id, item])), [allItems]);
+  const dependencySummary = useMemo(() => {
+    const impacts = domain.dependencyTimeline.items.map((item) => getDependencyImpact(item, itemsById));
+    return {
+      blocking: impacts.filter((impact) => impact === 'blocking').length,
+      unknown: impacts.filter((impact) => impact === 'unknown').length,
+    };
+  }, [domain.dependencyTimeline.items, itemsById]);
   const todayItems = projection.sections.focusItems;
+  const calendarItems = useMemo(
+    () => allItems.filter((item) => item.status === 'active' && item.due_date === domain.referenceDate),
+    [allItems, domain.referenceDate],
+  );
 
   const timelineCapacitySignal = useMemo(
-    () => getDaySignal(todayItems.length, projection.timeline.capacity.operationalHours),
-    [projection.timeline.capacity.operationalHours, todayItems.length],
+    () => toAISuggestCapacitySignal(projection.timeline.capacity.signal),
+    [projection.timeline.capacity.signal],
   );
 
   const nearbyDays = useMemo(
     () =>
       Array.from({ length: 3 }, (_, index) => {
         const date = shiftDay(domain.referenceDate, index + 1);
-        const scheduledCount = allItems.filter(
-          (item) => item.status === 'active' && item.due_date === date && item.type !== 'evento' && item.type !== 'lembrete',
-        ).length;
+        const scheduledItems = allItems.filter((item) => item.status === 'active' && item.due_date === date);
+        const capacity = getCapacityStatus(scheduledItems, date, projection.timeline.capacity.totalHours);
 
         return {
           date,
-          signal: getDaySignal(scheduledCount, projection.timeline.capacity.operationalHours),
-          scheduledCount,
+          signal: toAISuggestCapacitySignal(capacity.signal),
+          status: capacity,
+          scheduledCount: scheduledItems.length,
         };
       }),
-    [allItems, domain.referenceDate, projection.timeline.capacity.operationalHours],
+    [allItems, domain.referenceDate, projection.timeline.capacity.totalHours],
   );
 
   const timelineSuggestPayload = useMemo(() => {
@@ -121,18 +133,24 @@ export function TimelinePage() {
     };
   }, [dismissedSuggestionIds, timelineSuggestions]);
 
-  const timelineNeedsReplanning = timelineCapacitySignal !== 'balanced' || projection.timeline.capacity.overloadByItems > 0;
+  const timelineNeedsReplanning = projection.timeline.capacity.signal === 'loaded' || projection.timeline.capacity.signal === 'overloaded';
 
   useEffect(() => {
     if (!timelineNeedsReplanning) {
-      setTimelineSuggestions(null);
-      setDismissedSuggestionIds([]);
+      void Promise.resolve().then(() => {
+        setTimelineSuggestions(null);
+        setDismissedSuggestionIds([]);
+      });
       return;
     }
 
     let cancelled = false;
-    setTimelineSuggestions(null);
-    setDismissedSuggestionIds([]);
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setTimelineSuggestions(null);
+        setDismissedSuggestionIds([]);
+      }
+    });
 
     async function loadTimelineSuggestions() {
       const result = await suggestDayWithAI(timelineSuggestPayload);
@@ -200,6 +218,9 @@ export function TimelinePage() {
   return (
     <div className="space-y-4">
       <div className="flex gap-2">
+        <Button variant={mode === 'calendar' ? 'primary' : 'secondary'} onClick={() => setMode('calendar')}>
+          Calendario
+        </Button>
         <Button variant={mode === 'capacity' ? 'primary' : 'secondary'} onClick={() => setMode('capacity')}>
           Capacidade
         </Button>
@@ -209,27 +230,69 @@ export function TimelinePage() {
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-        {mode === 'capacity' ? (
+        {mode === 'calendar' ? (
+          <motion.div key="calendar" className="space-y-4" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }}>
+            <Card className="space-y-4 p-4">
+              <div>
+                <h3 className="text-lg font-semibold">Calendario</h3>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Visao temporal do dia. Capacidade e Dependencias sao lentes sobre a mesma timeline, nao navegacoes paralelas.
+                </p>
+              </div>
+              <div className="space-y-2">
+                {calendarItems.length > 0 ? (
+                  calendarItems.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => setSelectedItem(item)}
+                      className="w-full rounded-[var(--radius-2xl)] border border-[var(--border)] bg-[var(--surface-alt)] px-4 py-3 text-left text-sm transition hover:border-[var(--border-strong)]"
+                    >
+                      <p className="font-semibold text-[var(--text)]">{item.title}</p>
+                      <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">{item.type}</p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="rounded-[var(--radius-2xl)] bg-[var(--surface-alt)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+                    Nenhum item com data marcada para hoje.
+                  </p>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+        ) : mode === 'capacity' ? (
           <motion.div key="capacity" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18 }}>
             <Card className="space-y-4">
-              <h3 className="text-lg font-semibold">Capacidade do dia</h3>
+              <div>
+                <h3 className="text-lg font-semibold">Capacidade do dia</h3>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{projection.timeline.capacity.description}</p>
+              </div>
               <div className="grid gap-3 md:grid-cols-4">
                 <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                  <p className="text-xs text-[var(--text-tertiary)]">Horas totais</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">Janela disponivel</p>
                   <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.totalHours}h</p>
                 </div>
                 <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                  <p className="text-xs text-[var(--text-tertiary)]">Blocos inegociaveis</p>
-                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.inegociavelBlockHours}h</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">Carga mapeada</p>
+                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.committedHours === null ? projection.timeline.capacity.completeness : `${projection.timeline.capacity.committedHours}h`}</p>
                 </div>
                 <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                  <p className="text-xs text-[var(--text-tertiary)]">Compromissos fixos</p>
-                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.fixedCommitmentHours}h</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">Itens incompletos</p>
+                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.incompleteItems}</p>
                 </div>
                 <div className="rounded-2xl bg-[var(--surface-alt)] p-4">
-                  <p className="text-xs text-[var(--text-tertiary)]">Capacidade operacional</p>
-                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.operationalHours}h</p>
+                  <p className="text-xs text-[var(--text-tertiary)]">Estado</p>
+                  <p className="mt-2 text-2xl font-bold">{projection.timeline.capacity.completeness}</p>
                 </div>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                {nearbyDays.map((day) => (
+                  <div key={day.date} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-alt)] p-4">
+                    <p className="text-xs text-[var(--text-tertiary)]">{day.date}</p>
+                    <p className="mt-2 font-semibold text-[var(--text)]">{day.status.label}</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">{day.scheduledCount} itens com data</p>
+                  </div>
+                ))}
               </div>
               {timelineNeedsReplanning && visibleTimelineSuggestions && visibleTimelineSuggestions.suggestions.length > 0 ? (
                 <IASuggestCards
@@ -250,7 +313,10 @@ export function TimelinePage() {
                 <div>
                   <h3 className="text-lg font-semibold">Dependencias</h3>
                   <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    Onda 1 funcional: lista de cadeias e arvore indentada simples sobre a mesma derivacao do dia.
+                    Leitura de impacto qualificado. Vinculo com meta ou projeto orienta Direcao, mas nao vira dependencia.
+                  </p>
+                  <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+                    {dependencySummary.blocking} bloqueantes - {dependencySummary.unknown} incompletas
                   </p>
                 </div>
                 <div className="flex gap-2">

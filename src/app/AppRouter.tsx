@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { routes } from './routes';
@@ -6,7 +6,8 @@ import { ForgotPasswordPage } from '../features/auth/ForgotPasswordPage';
 import { LoginPage } from '../features/auth/LoginPage';
 import { ResetPasswordPage } from '../features/auth/ResetPasswordPage';
 import { SignupPage } from '../features/auth/SignupPage';
-import { useAuth } from '../features/auth/AuthProvider';
+import { useAuth } from '../features/auth/AuthContext';
+import { AdminRoute } from '../features/admin/AdminRoute';
 import { AdminPage } from '../features/admin/AdminPage';
 import { CentralPage } from '../features/central/CentralPage';
 import { FazerHomePage } from '../features/fazer/FazerHomePage';
@@ -81,7 +82,7 @@ function ProtectedApp() {
           <Route path="anexos" element={<AnexosPage />} />
         </Route>
         <Route path={routes.central} element={<CentralPage />} />
-        <Route path={routes.centralAdmin} element={<AdminPage />} />
+        <Route path={routes.centralAdmin} element={<AdminRoute><AdminPage /></AdminRoute>} />
       </Routes>
     </AppLayout>
   );

@@ -1,4 +1,5 @@
 import type { Item } from '../../../lib/types';
+import { canReceiveProtectedEssential, isProtectedEssential } from '../../../lib/entity-domain';
 import { shiftLocalDate, toLocalDateString } from '../../../lib/dates';
 import { deriveHojeDomain } from '../../fazer/domain/derived';
 import { isActiveItem } from '../../fazer/domain/canonical';
@@ -51,6 +52,8 @@ export function derivePlanejarPortfolio(items: Item[], referenceDate: string) {
   const projects = activeItems.filter((item) => item.type === 'projeto');
   const habits = activeItems.filter((item) => item.type === 'habito');
   const inegociaveis = activeItems.filter((item) => item.type === 'inegociavel');
+  const protectedEssentials = activeItems.filter((item) => canReceiveProtectedEssential(item.type) && isProtectedEssential(item.metadata as Record<string, unknown>));
+  const protectedEssentialCandidates = activeItems.filter((item) => canReceiveProtectedEssential(item.type) && !isProtectedEssential(item.metadata as Record<string, unknown>));
 
   const projectsByGoal = new Map<string, Item[]>();
   projects.forEach((project) => {
@@ -76,6 +79,7 @@ export function derivePlanejarPortfolio(items: Item[], referenceDate: string) {
     projectsCount: projects.length,
     habitsCount: habits.length,
     inegociaveisCount: inegociaveis.length,
+    protectedEssentialsCount: protectedEssentials.length,
     completedThisWeek: items.filter((item) => {
       if (item.status !== 'done' || !item.completed_at) return false;
       const completedDate = toLocalDateString(item.completed_at);
@@ -90,6 +94,8 @@ export function derivePlanejarPortfolio(items: Item[], referenceDate: string) {
     projects,
     habits,
     inegociaveis,
+    protectedEssentials,
+    protectedEssentialCandidates,
     projectsByGoal,
     tasksByProject,
     weeklyReview,

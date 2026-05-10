@@ -1,13 +1,16 @@
-import { CheckCheck, Clock3, FileImage, FilePlus2, FileText, Inbox, Sparkles, Trash2 } from 'lucide-react';
+import { FileImage, FilePlus2, FileText, Sparkles, Trash2 } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useActionFeedback } from '../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../components/feedback/ActionFeedbackContext';
 import { Badge, Button, Card, Field, Input, PillSelector } from '../../components/ui';
+import type { CanonicalEntityType } from '../../lib/entity-domain';
+import { createInboxOriginMetadata, normalizeEntityType } from '../../lib/entity-domain';
 import { resolveInboxAttachment } from '../../lib/inbox-attachments';
-import type { EntityType, InboxItem } from '../../lib/types';
+import type { InboxItem } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
 import { extractTags } from '../../utils/helpers';
 import { structuredCaptureTypeOptions } from '../capture/capture-types';
 import { buildInboxClassificationPayload, classifyInboxWithAI, type InboxClassificationSuggestion } from '../ia/classifyInbox';
+import { InboxTriageActions } from './components/InboxTriageActions';
 
 const inboxTypeOptions = structuredCaptureTypeOptions.map((option) => ({
   key: option.type,
@@ -24,7 +27,7 @@ export function InboxPage() {
   const { showFeedback } = useActionFeedback();
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState('');
-  const [draftType, setDraftType] = useState<EntityType | null>(null);
+  const [draftType, setDraftType] = useState<CanonicalEntityType | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [classificationLoading, setClassificationLoading] = useState(false);
   const [classificationSuggestion, setClassificationSuggestion] = useState<InboxClassificationSuggestion | null>(null);
@@ -55,7 +58,7 @@ export function InboxPage() {
     setProcessingId(item.id);
     processingIdRef.current = item.id;
     setDraftName(item.text);
-    setDraftType(item.ai_suggested_type);
+    setDraftType(normalizeEntityType(item.ai_suggested_type));
     setClassificationSuggestion(null);
     setSuggestionTypeApplied(false);
     setClassificationLoading(true);
@@ -93,7 +96,7 @@ export function InboxPage() {
     }
   }
 
-  function getMinimalMetadata(type: EntityType) {
+  function getMinimalMetadata(type: CanonicalEntityType) {
     if (type === 'habito') {
       return {
         frequency: 'daily',
@@ -115,16 +118,17 @@ export function InboxPage() {
       };
     }
 
-    if (type === 'inegociavel') {
-      return {};
-    }
-
     return {};
   }
 
-  function getPostponedMetadata(type: EntityType, item: InboxItem) {
+  function getInboxOriginMetadata(item: InboxItem) {
+    return createInboxOriginMetadata(item);
+  }
+
+  function getPostponedMetadata(type: CanonicalEntityType, item: InboxItem) {
     return {
       ...getMinimalMetadata(type),
+      ...getInboxOriginMetadata(item),
       // PRODUTO: isto fecha a semantica de dominio do adiamento vindo da inbox.
       // O gap remanescente nao e de dados, mas de UX: o produto ainda precisa
       // de uma superficie de primeira classe para reencontrar e retriar itens
@@ -177,7 +181,12 @@ export function InboxPage() {
         project_id: null,
         tags: [...new Set(mergedTags)],
         reschedule_count: 0,
-        metadata: nextStatus === 'paused' ? getPostponedMetadata(draftType, item) : getMinimalMetadata(draftType),
+        metadata: nextStatus === 'paused'
+          ? getPostponedMetadata(draftType, item)
+          : {
+              ...getMinimalMetadata(draftType),
+              ...getInboxOriginMetadata(item),
+            },
         image_url: item.image_url,
       });
 
@@ -209,6 +218,15 @@ export function InboxPage() {
       resetProcessor();
     }
     showFeedback('Item descartado da inbox.');
+  }
+
+  function confirmDiscard(item: InboxItem) {
+    const label = item.text.trim() || 'captura sem texto';
+    if (!window.confirm(`Descartar "${label}" da Inbox? Esta acao remove a captura da triagem.`)) {
+      return;
+    }
+
+    void handleDiscard(item);
   }
 
   function renderAttachment(item: InboxItem) {
@@ -286,7 +304,7 @@ export function InboxPage() {
                     options={inboxTypeOptions}
                     selected={draftType}
                     onSelect={(key) => {
-                      setDraftType((key as EntityType | null) ?? null);
+                      setDraftType((key as CanonicalEntityType | null) ?? null);
                       setSuggestionTypeApplied(false);
                     }}
                   />
@@ -340,31 +358,17 @@ export function InboxPage() {
                   </div>
                 ) : null}
 
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={() => void handleKeepInInbox(item)} disabled={submitting}>
-                    <Inbox className="h-4 w-4" />
-                    Manter na inbox
-                  </Button>
-                  <Button onClick={() => void handleConvert(item, 'active')} disabled={!canLeaveInbox || submitting}>
-                    <FilePlus2 className="h-4 w-4" />
-                    Converter
-                  </Button>
-                  <Button variant="secondary" onClick={() => void handleConvert(item, 'done')} disabled={!canLeaveInbox || submitting}>
-                    <CheckCheck className="h-4 w-4" />
-                    Concluir
-                  </Button>
-                  <Button variant="ghost" onClick={() => void handleConvert(item, 'paused')} disabled={!canLeaveInbox || submitting}>
-                    <Clock3 className="h-4 w-4" />
-                    Adiar
-                  </Button>
-                  <Button variant="destructive" onClick={() => void handleDiscard(item)} disabled={submitting}>
-                    <Trash2 className="h-4 w-4" />
-                    Descartar
-                  </Button>
-                  <Button variant="ghost" onClick={resetProcessor} disabled={submitting}>
-                    Cancelar
-                  </Button>
-                </div>
+                <InboxTriageActions
+                  item={item}
+                  canLeaveInbox={canLeaveInbox}
+                  submitting={submitting}
+                  onKeep={(entry) => void handleKeepInInbox(entry)}
+                  onConvert={(entry) => void handleConvert(entry, 'active')}
+                  onComplete={(entry) => void handleConvert(entry, 'done')}
+                  onPostpone={(entry) => void handleConvert(entry, 'paused')}
+                  onDiscard={(entry) => void handleDiscard(entry)}
+                  onCancel={resetProcessor}
+                />
               </div>
             ) : (
               <div className="space-y-2">
@@ -396,7 +400,7 @@ export function InboxPage() {
                 <FilePlus2 className="h-4 w-4" />
                 Processar
               </Button>
-              <Button variant="destructive" onClick={() => void handleDiscard(item)}>
+              <Button variant="destructive" onClick={() => confirmDiscard(item)}>
                 <Trash2 className="h-4 w-4" />
                 Descartar
               </Button>

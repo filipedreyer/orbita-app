@@ -1,12 +1,12 @@
-﻿import { Activity, Archive, BellRing, Database, Download, MonitorSmartphone, RefreshCcw, ShieldCheck, UserRound } from 'lucide-react';
+import { Activity, Archive, BellRing, Database, Download, MonitorSmartphone, RefreshCcw, ShieldCheck, UserRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { routes } from '../../app/routes';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { useAuth } from '../auth/AuthProvider';
-import { usePwa } from '../pwa/PwaProvider';
+import { useAuth } from '../auth/AuthContext';
+import { usePwa } from '../pwa/PwaContext';
 import * as itemsService from '../../services/items';
 import * as profileService from '../../services/profile';
 import { useDataStore } from '../../store';
@@ -25,7 +25,11 @@ export function AdminPage() {
     if (!session?.user) return;
 
     let isMounted = true;
-    setLoading(true);
+    void Promise.resolve().then(() => {
+      if (isMounted) {
+        setLoading(true);
+      }
+    });
 
     void Promise.all([
       itemsService.fetchArchivedItems(session.user.id),
@@ -189,4 +193,3 @@ export function AdminPage() {
     </div>
   );
 }
-

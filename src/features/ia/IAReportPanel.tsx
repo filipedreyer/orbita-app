@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BottomSheet, Button, Card } from '../../components/ui';
+import { Button, Card } from '../../components/ui';
 import { shiftLocalDate, today } from '../../lib/dates';
 import type { Item } from '../../lib/types';
 import { useDataStore } from '../../store';
+import { getCapacityStatus, toAISuggestCapacitySignal } from '../fazer/domain/canonical';
 import { deriveHojeDomain } from '../fazer/domain/derived';
 import { derivePlanejarPortfolio } from '../planejar/domain/derived';
 import { reportHojeWithAI } from './reportHoje';
 import { reportPlanejarWithAI } from './reportPlanejar';
 import { reportRevisaoWithAI } from './reportRevisao';
 import { reportTimelineWithAI } from './reportTimeline';
-import type { IARouteContext } from './types';
+import type { IAReportBlock, IARouteContext } from './types';
 
 function shiftDay(date: string, days: number) {
   return shiftLocalDate(date, days);
@@ -25,30 +26,14 @@ function getExecutionLinkState(item: Item, itemsById: Map<string, Item>) {
   );
 }
 
-function getDaySignal(count: number, operationalHours: number): 'balanced' | 'loaded' | 'overloaded' {
-  if (count > operationalHours + 1) return 'overloaded';
-  if (count >= operationalHours) return 'loaded';
-  return 'balanced';
-}
-
-export function IAReportDrawer({
-  visible,
-  onClose,
-  context,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  context: IARouteContext;
-}) {
+export function IAReportPanel({ context, active }: { context: IARouteContext; active: boolean }) {
   const items = useDataStore((state) => state.items);
   const referenceDate = today();
   const hoje = useMemo(() => deriveHojeDomain(items, referenceDate), [items, referenceDate]);
   const portfolio = useMemo(() => derivePlanejarPortfolio(items, referenceDate), [items, referenceDate]);
   const itemsById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
   const [selectedReportId, setSelectedReportId] = useState<string | null>(context.reports[0]?.id ?? null);
-  const [reportBlocks, setReportBlocks] = useState<
-    Record<string, { blocks: Array<{ type: 'status' | 'focus' | 'risk'; title: string; description: string }> } | null>
-  >({});
+  const [reportBlocks, setReportBlocks] = useState<Record<string, { blocks: IAReportBlock[] } | null>>({});
 
   const executionLinkSummary = useMemo(() => {
     const linkedCount = hoje.focusItems.filter((item) => getExecutionLinkState(item, itemsById)).length;
@@ -62,25 +47,20 @@ export function IAReportDrawer({
     () =>
       Array.from({ length: 3 }, (_, index) => {
         const date = shiftDay(referenceDate, index + 1);
-        const scheduledCount = items.filter(
-          (item) => item.status === 'active' && item.due_date === date && item.type !== 'evento' && item.type !== 'lembrete',
-        ).length;
+        const scheduledItems = items.filter((item) => item.status === 'active' && item.due_date === date);
+        const capacity = getCapacityStatus(scheduledItems, date, hoje.capacity.totalHours);
 
         return {
           date,
-          signal: getDaySignal(scheduledCount, hoje.capacity.operationalHours),
-          scheduledCount,
+          signal: toAISuggestCapacitySignal(capacity.signal),
+          scheduledCount: scheduledItems.length,
         };
       }),
-    [hoje.capacity.operationalHours, items, referenceDate],
+    [hoje.capacity.totalHours, items, referenceDate],
   );
 
   useEffect(() => {
-    setSelectedReportId(context.reports[0]?.id ?? null);
-  }, [context.reports]);
-
-  useEffect(() => {
-    if (!visible) return;
+    if (!active) return;
 
     let cancelled = false;
 
@@ -90,7 +70,7 @@ export function IAReportDrawer({
           if (report.id === 'reportHoje') {
             const result = await reportHojeWithAI({
               capacity: {
-                signal: getDaySignal(hoje.focusItems.length, hoje.capacity.operationalHours),
+                signal: toAISuggestCapacitySignal(hoje.capacity.signal),
                 focusCount: hoje.focusItems.length,
                 overdueCount: hoje.overdueItems.length,
               },
@@ -108,7 +88,7 @@ export function IAReportDrawer({
             const result = await reportTimelineWithAI({
               selectedDay: {
                 date: referenceDate,
-                signal: getDaySignal(hoje.focusItems.length, hoje.capacity.operationalHours),
+                signal: toAISuggestCapacitySignal(hoje.capacity.signal),
                 itemCount: hoje.focusItems.length,
                 operationalHours: hoje.capacity.operationalHours,
               },
@@ -174,48 +154,52 @@ export function IAReportDrawer({
     return () => {
       cancelled = true;
     };
-  }, [context.reports, executionLinkSummary, hoje, items, nearbyDays, portfolio, referenceDate, visible]);
+  }, [active, context.reports, executionLinkSummary, hoje, items, nearbyDays, portfolio, referenceDate]);
 
   const activeReport = context.reports.find((report) => report.id === selectedReportId) ?? context.reports[0] ?? null;
   const activeBlocks = activeReport ? reportBlocks[activeReport.id]?.blocks ?? [] : [];
 
+  if (context.reports.length === 0) {
+    return (
+      <Card className="p-4">
+        <p className="text-sm text-[var(--text-secondary)]">Nenhum relatorio contextual disponivel nesta superficie.</p>
+      </Card>
+    );
+  }
+
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Relatorios contextuais">
-      <div className="space-y-4">
-        <div>
-          <p className="text-sm font-semibold text-[var(--text)]">{context.routeLabel}</p>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Leituras curtas desta superficie, mantendo interpretacao separada de chat e de sugestoes.</p>
-        </div>
-
-        {context.reports.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {context.reports.map((report) => (
-              <Button
-                key={report.id}
-                variant={report.id === activeReport?.id ? 'primary' : 'ghost'}
-                onClick={() => setSelectedReportId(report.id)}
-              >
-                {report.title}
-              </Button>
-            ))}
-          </div>
-        ) : null}
-
-        {activeReport && activeBlocks.length > 0 ? (
-          <div className="space-y-3">
-            {activeBlocks.map((block) => (
-              <Card key={`${block.type}:${block.title}`} className="space-y-2 p-4">
-                <p className="text-sm font-semibold text-[var(--text)]">{block.title}</p>
-                <p className="text-sm text-[var(--text-secondary)]">{block.description}</p>
-              </Card>
-            ))}
-          </div>
-        ) : activeReport ? (
-          <Card className="p-4">
-            <p className="text-sm text-[var(--text-secondary)]">Relatorio indisponivel agora.</p>
-          </Card>
-        ) : null}
+    <div className="space-y-4">
+      <div>
+        <p className="text-sm font-semibold text-[var(--text)]">{context.routeLabel}</p>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">Relatorios sao leitura interna da Idea e nao executam mudancas.</p>
       </div>
-    </BottomSheet>
+
+      <div className="flex flex-wrap gap-2">
+        {context.reports.map((report) => (
+          <Button
+            key={report.id}
+            variant={report.id === activeReport?.id ? 'primary' : 'ghost'}
+            onClick={() => setSelectedReportId(report.id)}
+          >
+            {report.title}
+          </Button>
+        ))}
+      </div>
+
+      {activeReport && activeBlocks.length > 0 ? (
+        <div className="space-y-3">
+          {activeBlocks.map((block) => (
+            <Card key={`${block.type}:${block.title}`} className="space-y-2 p-4">
+              <p className="text-sm font-semibold text-[var(--text)]">{block.title}</p>
+              <p className="text-sm text-[var(--text-secondary)]">{block.description}</p>
+            </Card>
+          ))}
+        </div>
+      ) : activeReport ? (
+        <Card className="p-4">
+          <p className="text-sm text-[var(--text-secondary)]">Relatorio indisponivel agora.</p>
+        </Card>
+      ) : null}
+    </div>
   );
 }

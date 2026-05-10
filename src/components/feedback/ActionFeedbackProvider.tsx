@@ -1,7 +1,8 @@
 import type { PropsWithChildren } from 'react';
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '../ui/Button';
+import { ActionFeedbackContext, type ActionFeedbackContextValue } from './ActionFeedbackContext';
 
 interface FeedbackState {
   id: number;
@@ -9,12 +10,6 @@ interface FeedbackState {
   undoLabel?: string;
   onUndo?: () => void;
 }
-
-interface ActionFeedbackContextValue {
-  showFeedback: (message: string, options?: { undoLabel?: string; onUndo?: () => void }) => void;
-}
-
-const ActionFeedbackContext = createContext<ActionFeedbackContextValue | null>(null);
 
 export function ActionFeedbackProvider({ children }: PropsWithChildren) {
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
@@ -71,12 +66,4 @@ export function ActionFeedbackProvider({ children }: PropsWithChildren) {
       </AnimatePresence>
     </ActionFeedbackContext.Provider>
   );
-}
-
-export function useActionFeedback() {
-  const context = useContext(ActionFeedbackContext);
-  if (!context) {
-    throw new Error('useActionFeedback must be used within ActionFeedbackProvider');
-  }
-  return context;
 }

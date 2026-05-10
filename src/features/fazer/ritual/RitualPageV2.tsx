@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { GripVertical, Lock, MoveUpRight, Sparkles, TriangleAlert } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { routes } from '../../../app/routes';
-import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackContext';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { CardRow } from '../../../components/ui/CardRow';
@@ -19,6 +19,7 @@ import type { Item } from '../../../lib/types';
 import { shiftLocalDate } from '../../../lib/dates';
 import { useDataStore } from '../../../store';
 import { useHojeProjection, useRitualDomain } from '../../../store/fazer';
+import { toAISuggestCapacitySignal } from '../domain/canonical';
 import { isRitualLockedItem } from '../domain/ordering';
 
 const LONG_INACTIVITY_DAYS = 14;
@@ -158,30 +159,12 @@ export function RitualPageV2() {
     description: string;
     tone: 'balanced' | 'loaded' | 'overloaded';
   }>(() => {
-    const count = executionZones.agora.length;
-
-    if (count <= 3) {
-      return {
-        label: 'Equilibrado',
-        description: 'O bloco de execucao imediata parece caber no ritmo do dia.',
-        tone: 'balanced',
-      };
-    }
-
-    if (count <= 5) {
-      return {
-        label: 'Carregado',
-        description: 'Ha pressao real no agora. Vale proteger foco antes de adicionar mais frentes.',
-        tone: 'loaded',
-      };
-    }
-
     return {
-      label: 'Sobrecarregado',
-      description: 'Itens demais disputando execucao imediata. O dia pede reducao de friccao.',
-      tone: 'overloaded',
+      label: domain.capacity.label,
+      description: domain.capacity.description,
+      tone: toAISuggestCapacitySignal(domain.capacity.signal),
     };
-  }, [executionZones.agora.length]);
+  }, [domain.capacity.description, domain.capacity.label, domain.capacity.signal]);
 
   const ritualCapacitySignal = useMemo<RitualReadPayload['capacity']['signal']>(() => {
     if (capacitySignal.tone === 'overloaded') return 'overloaded';
@@ -273,7 +256,12 @@ export function RitualPageV2() {
 
   useEffect(() => {
     let cancelled = false;
-    setRitualReading(null);
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setRitualReading(null);
+      }
+    });
 
     async function loadRitualReading() {
       const reading = await readRitualWithAI(ritualPayload);
@@ -291,8 +279,13 @@ export function RitualPageV2() {
 
   useEffect(() => {
     let cancelled = false;
-    setCapacitySuggestions(null);
-    setDismissedSuggestionIds([]);
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setCapacitySuggestions(null);
+        setDismissedSuggestionIds([]);
+      }
+    });
 
     async function loadCapacitySuggestions() {
       const result = await suggestDayWithAI(suggestPayload);
@@ -379,7 +372,7 @@ export function RitualPageV2() {
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Ritual de abertura</p>
         <h3 className="mt-2 text-2xl font-bold tracking-[-0.03em]">Abrir o dia com clareza</h3>
         <p className="mt-2 max-w-2xl text-sm text-[var(--text-secondary)]">
-          Esta abertura nao pede respostas nem checklists. Ela so enquadra o dia antes da execucao: o que merece atencao, se o desenho de hoje cabe e se o foco segue conectado a direcao.
+          Esta abertura nao pede respostas nem checklists. Ela so enquadra o dia antes da execucao: o que merece atencao, se o desenho de hoje cabe e se a execucao segue conectada a direcao.
         </p>
       </div>
 

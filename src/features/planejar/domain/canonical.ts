@@ -12,7 +12,6 @@ export const PLANNING_ENTITY_TYPES: readonly EntityType[] = [
   'lembrete',
   'lista',
   'ideia',
-  'inegociavel',
 ];
 
 export const PLANNING_HORIZONS = ['imediato', 'semana', 'depois'] as const;

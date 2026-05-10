@@ -1,4 +1,5 @@
 import type { Item } from '../../../lib/types';
+import { isLegacyInegociavel } from '../../../lib/entity-domain';
 import { isOverdueItem, isScheduledInegociavel } from './canonical';
 
 export const DAY_SUBGROUPS = ['A', 'B', 'C', 'D'] as const;
@@ -26,11 +27,11 @@ export function isOperationalCommitmentCoherent(item: Item) {
 export function getDaySubgroup(item: Item): DaySubgroup {
   // DECISÃO: nesta mini-fase, os subgrupos operacionais são restaurados com a semântica
   // mínima necessária para o fluxo atual de Hoje/Ritual:
-  // A = compromissos fixos do dia (evento, lembrete, inegociável)
+  // A = compromissos fixos do dia (evento, lembrete, legado essencial protegido com horario)
   // B = entregas/tarefas datadas
   // C = práticas recorrentes (hábito, rotina)
   // D = tarefas flexíveis sem data
-  if (item.type === 'evento' || item.type === 'lembrete' || item.type === 'inegociavel') {
+  if (item.type === 'evento' || item.type === 'lembrete' || isRitualLockedItem(item)) {
     return 'A';
   }
 
@@ -46,7 +47,7 @@ export function getDaySubgroup(item: Item): DaySubgroup {
 }
 
 export function isRitualLockedItem(item: Item) {
-  return item.type === 'inegociavel' && isScheduledInegociavel(item);
+  return isLegacyInegociavel(item.type) && isScheduledInegociavel(item);
 }
 
 function sortDayItemsAutomatically(items: Item[], referenceDate: string) {

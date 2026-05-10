@@ -1,7 +1,10 @@
 import type { Item } from '../../../lib/types';
+import { isLegacyInegociavel } from '../../../lib/entity-domain';
 import {
   DEFAULT_OPERATIONAL_DAY_HOURS,
   getAttentionLevel,
+  getCapacityStatus,
+  getDirectionStatus,
   getFixedCommitmentHours,
   getInegociavelBlockHours,
   isActiveItem,
@@ -144,23 +147,24 @@ export function deriveHojeDomain(items: Item[], referenceDate: string, ritualOrd
   const todayTasks = items.filter((item) => isTodayTask(item, referenceDate));
   const todayHabits = items.filter((item) => isTodayHabitLike(item));
   const todayEvents = items.filter((item) => isTodayEventLike(item, referenceDate));
-  const activeInegociaveis = items.filter((item) => item.type === 'inegociavel' && isActiveItem(item));
-  const fixedInegociaveis = activeInegociaveis.filter((item) => isTodayInegociavel(item));
-  const capacityOnlyInegociaveis = activeInegociaveis.filter((item) => !isScheduledInegociavel(item));
+  const legacyProtectedEssentialItems = items.filter((item) => isLegacyInegociavel(item.type) && isActiveItem(item));
+  const fixedInegociaveis = legacyProtectedEssentialItems.filter((item) => isTodayInegociavel(item));
+  const capacityOnlyInegociaveis = legacyProtectedEssentialItems.filter((item) => !isScheduledInegociavel(item));
   const rawFocusItems = rawDayItems.filter((item) => item.type !== 'evento' && item.type !== 'lembrete');
   const normalizedRitualOrder = normalizeRitualOrder(rawFocusItems, referenceDate, ritualOrder);
   const focusItems = sortDayItems(rawFocusItems, referenceDate, normalizedRitualOrder);
   const completedToday = items.filter((item) => item.status === 'done' && item.completed_at?.startsWith(referenceDate));
 
-  const inegociavelBlockHours = activeInegociaveis.reduce((sum, item) => sum + getInegociavelBlockHours(item), 0);
+  const inegociavelBlockHours = legacyProtectedEssentialItems.reduce((sum, item) => sum + getInegociavelBlockHours(item), 0);
   const fixedCommitmentHours = items.reduce((sum, item) => sum + getFixedCommitmentHours(item, referenceDate), 0);
-  const operationalCapacity = Math.max(0, DEFAULT_OPERATIONAL_DAY_HOURS - inegociavelBlockHours - fixedCommitmentHours);
+  const capacityStatus = getCapacityStatus(items, referenceDate, DEFAULT_OPERATIONAL_DAY_HOURS);
+  const operationalCapacity = Math.max(0, DEFAULT_OPERATIONAL_DAY_HOURS - fixedCommitmentHours);
+  const directionStatus = getDirectionStatus(focusItems);
 
-  const blockedInegociaveis = activeInegociaveis.filter((item) => isInegociavelBlock(item) && !!item.due_date && item.due_date < referenceDate);
+  const blockedInegociaveis = legacyProtectedEssentialItems.filter((item) => isInegociavelBlock(item) && !!item.due_date && item.due_date < referenceDate);
   const attentionLevel = getAttentionLevel({
     overdueCount: overdueItems.length,
-    dayItemsCount: focusItems.length,
-    capacityHours: operationalCapacity,
+    capacityStatus,
     blockedInegociaveisCount: blockedInegociaveis.length,
   });
 
@@ -168,7 +172,7 @@ export function deriveHojeDomain(items: Item[], referenceDate: string, ritualOrd
   const cuidadoItems = focusItems.filter(
     (item) =>
       !urgentItems.some((urgent) => urgent.id === item.id) &&
-      (item.priority === 'alta' || item.type === 'inegociavel'),
+      item.priority === 'alta',
   );
   const radarItems = [...todayEvents, ...capacityOnlyInegociaveis].filter(
     (item, index, collection) =>
@@ -201,8 +205,18 @@ export function deriveHojeDomain(items: Item[], referenceDate: string, ritualOrd
       inegociavelBlockHours,
       fixedCommitmentHours,
       operationalHours: operationalCapacity,
-      overloadByItems: Math.max(0, focusItems.length - operationalCapacity),
+      availableHours: capacityStatus.availableHours,
+      committedHours: capacityStatus.committedHours,
+      incompleteItems: capacityStatus.incompleteItems,
+      computableItems: capacityStatus.computableItems,
+      unknownItems: capacityStatus.unknownItems,
+      completeness: capacityStatus.completeness,
+      signal: capacityStatus.signal,
+      label: capacityStatus.label,
+      description: capacityStatus.description,
+      overloadByItems: 0,
     },
+    direction: directionStatus,
     attentionLevel,
   };
 }

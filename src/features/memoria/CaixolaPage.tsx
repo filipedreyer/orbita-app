@@ -4,8 +4,10 @@ import { Button, Card, Input } from '../../components/ui';
 import type { Item } from '../../lib/types';
 import { useAuthStore, useDataStore } from '../../store';
 import { EntitySheetWrapper } from '../entity/EntitySheetWrapper';
+import { CaixolaClusterSuggestion } from './components/CaixolaClusterSuggestion';
+import { CaixolaPromotionSuggestion } from './components/CaixolaPromotionSuggestion';
 import { NoteEditorPanel } from './components/NoteEditorPanel';
-import { getPlainText, isDiaryNote, isTemplateNote } from './memory-helpers';
+import { getItemTags, getPlainText, isDiaryNote, isTemplateNote } from './memory-helpers';
 
 export function CaixolaPage() {
   const session = useAuthStore((state) => state.session);
@@ -28,6 +30,31 @@ export function CaixolaPage() {
       .filter((item) => `${item.title} ${getPlainText(item.description)}`.toLowerCase().includes(search.toLowerCase()))
       .sort((left, right) => (right.due_date ?? right.updated_at).localeCompare(left.due_date ?? left.updated_at));
   }, [filter, items, search]);
+
+  const incubatingNotes = useMemo(
+    () => notes.filter((item) => !item.due_date && item.status === 'active'),
+    [notes],
+  );
+
+  const clusterSuggestion = useMemo(() => {
+    const byTag = new Map<string, Item[]>();
+
+    for (const item of incubatingNotes) {
+      for (const tag of getItemTags(item)) {
+        const current = byTag.get(tag) ?? [];
+        byTag.set(tag, [...current, item]);
+      }
+    }
+
+    return [...byTag.entries()].find(([, entries]) => entries.length >= 2) ?? null;
+  }, [incubatingNotes]);
+
+  const promotionSuggestion = useMemo(() => {
+    return incubatingNotes.find((item) => {
+      const text = `${item.title} ${getPlainText(item.description)}`.toLowerCase();
+      return text.includes('todo') || text.includes('fazer') || text.includes('lembrete') || text.includes('?');
+    }) ?? incubatingNotes[0] ?? null;
+  }, [incubatingNotes]);
 
   async function handleSave(payload: { title: string; content: string }) {
     if (!session?.user) return;
@@ -64,7 +91,7 @@ export function CaixolaPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-xl font-semibold">Caixola</h3>
-            <p className="mt-2 text-sm text-[var(--text-secondary)]">Notas, diário e templates usando o mesmo editor.</p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">Incubacao e recuperacao de notas, materiais soltos, screenshots e lembretes ainda sem forma.</p>
           </div>
           <Button onClick={() => setEditorState({ mode: 'new', item: null })}>
             <BookPlus className="h-4 w-4" />
@@ -78,6 +105,21 @@ export function CaixolaPage() {
         </div>
         <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar por título ou conteúdo..." />
       </Card>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        {clusterSuggestion ? (
+          <CaixolaClusterSuggestion
+            clusterLabel={clusterSuggestion[0]}
+            items={clusterSuggestion[1]}
+            onReview={() => setSearch(clusterSuggestion[0])}
+          />
+        ) : null}
+        <CaixolaPromotionSuggestion
+          item={promotionSuggestion}
+          suggestedTarget="tarefa, lembrete ou nota estruturada"
+          onReview={(item) => setSelectedItem(item)}
+        />
+      </div>
 
       <div className="space-y-3">
         {notes.map((item) => (

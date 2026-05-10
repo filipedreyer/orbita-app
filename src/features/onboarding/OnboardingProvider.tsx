@@ -1,15 +1,8 @@
-﻿import { createContext, useContext, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { PropsWithChildren } from 'react';
-
-type OnboardingArea = 'fazer' | 'memoria' | 'planejar';
+import { OnboardingContext, type OnboardingArea, type OnboardingContextValue } from './OnboardingContext';
 
 type OnboardingState = Record<OnboardingArea, boolean>;
-
-interface OnboardingContextValue {
-  isPending: (area: OnboardingArea) => boolean;
-  dismissArea: (area: OnboardingArea) => void;
-  resetAll: () => void;
-}
 
 const STORAGE_KEY = 'orbita-onboarding-state';
 const initialState: OnboardingState = {
@@ -31,8 +24,6 @@ function readInitialState(): OnboardingState {
   }
 }
 
-const OnboardingContext = createContext<OnboardingContextValue | null>(null);
-
 export function OnboardingProvider({ children }: PropsWithChildren) {
   const [state, setState] = useState<OnboardingState>(() => readInitialState());
 
@@ -51,12 +42,4 @@ export function OnboardingProvider({ children }: PropsWithChildren) {
   );
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
-}
-
-export function useOnboarding() {
-  const context = useContext(OnboardingContext);
-  if (!context) {
-    throw new Error('useOnboarding must be used within OnboardingProvider');
-  }
-  return context;
 }

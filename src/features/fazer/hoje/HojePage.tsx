@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Sparkles, X } from 'lucide-react';
-import { useActionFeedback } from '../../../components/feedback/ActionFeedbackProvider';
+import { useActionFeedback } from '../../../components/feedback/ActionFeedbackContext';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { CreateLauncherModal } from '../../capture/CreateLauncherModal';
@@ -20,14 +20,16 @@ import {
   type TodayReadStatus,
 } from '../../ia/readToday';
 import { shiftLocalDate, today } from '../../../lib/dates';
+import { isLegacyInegociavel, isProtectedEssential } from '../../../lib/entity-domain';
 import type { Item } from '../../../lib/types';
 import { useDataStore } from '../../../store';
 import { useHojeDomain, useHojeProjection } from '../../../store/fazer';
+import { toAISuggestCapacitySignal } from '../domain/canonical';
 import type { IASuggestResult, IASuggestionItem } from '../../ia/types';
 import { CompletedSection } from './CompletedSection';
 import { DayHeader } from './DayHeader';
 import { DayList } from './DayList';
-import { InegociavelCapacityBlock } from './InegociavelCapacityBlock';
+import { ProtectedEssentialCapacityBlock } from './ProtectedEssentialCapacityBlock';
 import { ReminderBanner } from './ReminderBanner';
 
 const LONG_INACTIVITY_DAYS = 14;
@@ -101,30 +103,12 @@ export function HojePage() {
     label: string;
     description: string;
   }>(() => {
-    const count = executionZones.agora.length;
-
-    if (count <= 3) {
-      return {
-        tone: 'balanced',
-        label: 'Capacidade equilibrada',
-        description: 'O bloco de execucao imediata parece caber no ritmo do dia.',
-      };
-    }
-
-    if (count <= 5) {
-      return {
-        tone: 'loaded',
-        label: 'Capacidade carregada',
-        description: 'Ha pressao real no agora. Vale proteger foco e evitar adicionar mais frentes.',
-      };
-    }
-
     return {
-      tone: 'overloaded',
-      label: 'Capacidade sobrecarregada',
-      description: 'Itens demais disputando execucao imediata hoje. O plano pede reducao de friccao.',
+      tone: toAISuggestCapacitySignal(domain.capacity.signal),
+      label: domain.capacity.label,
+      description: domain.capacity.description,
     };
-  }, [executionZones.agora.length]);
+  }, [domain.capacity.description, domain.capacity.label, domain.capacity.signal]);
 
   const agoraSummary = useMemo(() => {
     const dueTodayCount = executionZones.agora.filter((item) => item.due_date === referenceDate).length;
@@ -170,10 +154,10 @@ export function HojePage() {
         parts.push('Rotina em execução');
       }
 
-      if (item.type === 'inegociavel') {
+      if (isLegacyInegociavel(item.type) || isProtectedEssential(item.metadata as Record<string, unknown>)) {
         const metadata = (item.metadata || {}) as Record<string, unknown>;
         if (metadata.horario_inicio || metadata.horario_fim) {
-          parts.push('Protege a capacidade como bloco do dia');
+          parts.push('Essencial protegido com janela explicita');
         } else {
           parts.push('Protege a capacidade sem bloco fixo explícito');
         }
@@ -240,8 +224,13 @@ export function HojePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setDaySuggestions(null);
-    setDismissedSuggestionIds([]);
+
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        setDaySuggestions(null);
+        setDismissedSuggestionIds([]);
+      }
+    });
 
     async function loadSuggestions() {
       const result = await suggestDayWithAI(suggestPayload);
@@ -367,9 +356,9 @@ export function HojePage() {
       <IAEntryPoints
         compact
         title="Leitura contextual de Hoje"
-        description="Abre os drawers contextuais ja preparados para execucao, foco e risco do dia."
+        description="Abre os drawers contextuais ja preparados para execucao, direcao e risco do dia."
       />
-      <InegociavelCapacityBlock items={projection.sections.inegociaveis} />
+      <ProtectedEssentialCapacityBlock items={projection.sections.inegociaveis} />
 
       <Card className="space-y-4 p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -395,9 +384,9 @@ export function HojePage() {
         <div
           className={[
             'rounded-[var(--radius-2xl)] border px-4 py-3 text-sm',
-            capacitySignal.tone === 'overloaded'
+            domain.capacity.signal === 'overloaded'
               ? 'border-[var(--danger)]/25 bg-[var(--danger)]/10 text-[var(--text)]'
-              : capacitySignal.tone === 'loaded'
+              : domain.capacity.signal === 'loaded' || domain.capacity.signal === 'parcial' || domain.capacity.signal === 'incompleto'
                 ? 'border-[var(--warning)]/25 bg-[var(--warning)]/10 text-[var(--text)]'
                 : 'border-[var(--accent-border)] bg-[var(--accent-soft)]/60 text-[var(--text)]',
           ].join(' ')}
@@ -424,7 +413,7 @@ export function HojePage() {
           <section className="space-y-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Para fazer agora</p>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">Faixa de execucao imediata: o que vence hoje e o que precisa entrar em foco agora.</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Faixa de execucao imediata: o que vence hoje e o que precisa entrar no agora.</p>
               <p className="mt-2 text-xs text-[var(--text-tertiary)]">
                 {agoraSummary.dueTodayCount} com data de hoje
                 {agoraSummary.highPriorityCount > 0 ? ` · ${agoraSummary.highPriorityCount} de alta prioridade sem data de hoje` : ''}

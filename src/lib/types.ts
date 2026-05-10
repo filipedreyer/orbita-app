@@ -1,22 +1,15 @@
+import type { CanonicalEntityType, DeprecatedEntityType, EssentialProtectionMetadata, InboxOriginMetadata, AttachmentMetadata } from './entity-domain';
+
 export type EntityType =
-  | 'tarefa'
-  | 'projeto'
-  | 'meta'
-  | 'habito'
-  | 'rotina'
-  | 'evento'
-  | 'nota'
-  | 'ideia'
-  | 'lembrete'
-  | 'lista'
-  | 'inegociavel';
+  | CanonicalEntityType
+  | DeprecatedEntityType;
 
 export type PriorityLevel = 'alta' | 'media' | 'baixa';
 export type EntityStatus = 'active' | 'done' | 'cancelled' | 'archived' | 'paused';
 export type FrequencyType = 'daily' | 'weekly' | 'monthly';
 export type GoalDirection = 'up' | 'stable' | 'down';
 export type InegociavelRuleType = 'bloco_tempo' | 'frequencia' | 'limite';
-export type CaptureType = 'inbox' | EntityType;
+export type CaptureType = 'inbox' | CanonicalEntityType;
 export type CaptureOrigin = 'quick_capture' | 'structured';
 
 export interface HabitMetadata {
@@ -60,7 +53,15 @@ export interface InboxAttachmentFields {
   attachment_mime_type?: string | null;
 }
 
-export type ItemMetadata = HabitMetadata | RoutineMetadata | EventMetadata | InegociavelMetadata | Record<string, unknown>;
+export type ItemMetadata =
+  | HabitMetadata
+  | RoutineMetadata
+  | EventMetadata
+  | InegociavelMetadata
+  | EssentialProtectionMetadata
+  | InboxOriginMetadata
+  | AttachmentMetadata
+  | Record<string, unknown>;
 
 export interface Item {
   id: string;
